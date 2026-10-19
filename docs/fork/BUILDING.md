@@ -24,12 +24,23 @@ repository contents. Its pushes must be authorized to update workflow files.
 A credentials job runs first. Separate Windows jobs prepare dependencies and
 compile/package the application, each with a 350-minute timeout. Dependencies
 use this checkout's pinned preparation script, SDK 10.0.26100.0 and MSVC
-14.44. Debug and Release library configurations are prepared because the
+14.44. Each Windows job checks matching ATL headers and libraries and installs
+the versioned `Microsoft.VisualStudio.Component.VC.14.44.17.14.ATL` component
+when missing. This avoids Breakpad's `atlbase.h`/`atlcomcli.h` failures when a
+runner has the old compiler but only the newest ATL. The bootstrap exports
+the actual versioned include/library paths to subsequent steps. The component
+identifier is listed in Microsoft's [Visual Studio 2026 component directory](https://learn.microsoft.com/en-us/visualstudio/install/workload-component-id-vs-build-tools?view=visualstudio).
+Debug and Release library configurations are prepared because the
 upstream script does not expose a supported skip-debug switch. The application
 is built in Release only.
 
-ThirdParty tools, non-Qt Libraries and Qt have separate recipe/toolchain keys.
-The build job requires all three exact caches; it fails on missing handoff
+ThirdParty tools, non-Qt Libraries and Qt have separate recipe/toolchain keys,
+with a unique revision for each run attempt. Preparation restores the latest
+matching snapshot and saves tools/library progress even when a later stage
+fails. The preparation script's stage keys decide which outputs can be reused;
+a failed stage without its success key is rebuilt. Qt is saved after its stage
+key exists. The build job requires all three exact caches from its successful
+dependency job; it fails on missing handoff
 instead of silently compiling against incomplete dependencies. MSVC compilation
 uses sccache with embedded debug information. API values are read from the
 process environment by an initial CMake script; the application build tree
@@ -39,8 +50,9 @@ Cold dependency preparation may exceed the available runner disk, cache quota
 or six-hour job limit. That has not been measured yet. If it does, stop and
 use the named stage groups in `prepare.py` to split preparation further,
 increase cache capacity or choose a suitable runner. Do not claim that the
-separate app job solves an oversized dependency job. Interrupted preparation
-does not publish successful cache handoff. GitHub's required check/result and
+separate app job solves an oversized dependency job. An interrupted or failed
+dependency job cannot trigger the app build; its partial cache is solely for
+the next preparation attempt. GitHub's required check/result and
 the actual uploaded artifact are the source of truth.
 
 ## Download and side-by-side use

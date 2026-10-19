@@ -44,7 +44,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 350
     outputs:
-      cache-key: ${{ steps.identity.outputs.key }}
+      cache-prefix: ${{ steps.identity.outputs.prefix }}
+      cache-revision: ${{ steps.identity.outputs.revision }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -55,18 +56,25 @@ jobs:
           arch: x64
           sdk: ${{ env.FORK_SDK }}
           toolset: ${{ env.FORK_TOOLSET }}
+      - name: Ensure ATL matches the selected compiler
+        shell: pwsh
+        run: '& TBuild/tdesktop/Telegram/build/fork/ensure-atl.ps1'
       - name: Identify pinned library recipes
         id: identity
         shell: pwsh
         env:
           RECIPE_HASH: ${{ hashFiles('TBuild/tdesktop/Telegram/build/prepare/**', 'TBuild/tdesktop/Telegram/build/qt_version.py', 'TBuild/tdesktop/cmake/external/angle/qt.cmake') }}
         run: |
-          "key=fork-win-x64-release-v1-${{ runner.os }}-${env:FORK_TOOLSET}-${env:FORK_SDK}-${env:RECIPE_HASH}" >> $env:GITHUB_OUTPUT
-      - uses: actions/cache@v6
+          "prefix=fork-win-x64-release-v2-${{ runner.os }}-${env:FORK_TOOLSET}-${env:FORK_SDK}-${env:RECIPE_HASH}" >> $env:GITHUB_OUTPUT
+          "revision=${{ github.run_id }}-${{ github.run_attempt }}" >> $env:GITHUB_OUTPUT
+      - uses: actions/cache/restore@v6
+        id: tools
         with:
           path: TBuild/ThirdParty
-          key: ${{ steps.identity.outputs.key }}-tools
-      - uses: actions/cache@v6
+          key: ${{ steps.identity.outputs.prefix }}-tools-${{ steps.identity.outputs.revision }}
+          restore-keys: ${{ steps.identity.outputs.prefix }}-tools-
+      - uses: actions/cache/restore@v6
+        id: libraries
         with:
           path: |
             TBuild/Libraries/win64/*
@@ -74,19 +82,48 @@ jobs:
             !TBuild/Libraries/win64/cache_keys
             TBuild/Libraries/win64/cache_keys/*
             !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
-          key: ${{ steps.identity.outputs.key }}-libraries
-      - uses: actions/cache@v6
+          key: ${{ steps.identity.outputs.prefix }}-libraries-${{ steps.identity.outputs.revision }}
+          restore-keys: ${{ steps.identity.outputs.prefix }}-libraries-
+      - uses: actions/cache/restore@v6
+        id: qt
         with:
           path: |
             TBuild/Libraries/win64/[qQ]t[_-]*
             TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
-          key: ${{ steps.identity.outputs.key }}-qt
+          key: ${{ steps.identity.outputs.prefix }}-qt-${{ steps.identity.outputs.revision }}
+          restore-keys: ${{ steps.identity.outputs.prefix }}-qt-
       - name: Prepare Debug and Release dependency configurations
+        id: prepare
         shell: cmd
         run: |
           git config --global user.name "Fork dependency builder"
           git config --global user.email "fork-build@users.noreply.github.com"
           call TBuild\tdesktop\Telegram\build\prepare\win.bat silent qt6
+      - name: Retain prepared tools after success or failure
+        if: ${{ always() && !cancelled() && (steps.prepare.outcome == 'success' || steps.prepare.outcome == 'failure') }}
+        uses: actions/cache/save@v6
+        with:
+          path: TBuild/ThirdParty
+          key: ${{ steps.tools.outputs.cache-primary-key }}
+      - name: Retain completed library stages after success or failure
+        if: ${{ always() && !cancelled() && (steps.prepare.outcome == 'success' || steps.prepare.outcome == 'failure') }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            TBuild/Libraries/win64/*
+            !TBuild/Libraries/win64/[qQ]t[_-]*
+            !TBuild/Libraries/win64/cache_keys
+            TBuild/Libraries/win64/cache_keys/*
+            !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ steps.libraries.outputs.cache-primary-key }}
+      - name: Retain a completed Qt stage
+        if: ${{ always() && !cancelled() && hashFiles('TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*') != '' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ steps.qt.outputs.cache-primary-key }}
 
   build:
     name: Compile and package Windows x64
@@ -103,10 +140,13 @@ jobs:
           arch: x64
           sdk: ${{ env.FORK_SDK }}
           toolset: ${{ env.FORK_TOOLSET }}
+      - name: Ensure ATL matches the selected compiler
+        shell: pwsh
+        run: '& TBuild/tdesktop/Telegram/build/fork/ensure-atl.ps1'
       - uses: actions/cache/restore@v6
         with:
           path: TBuild/ThirdParty
-          key: ${{ needs.dependencies.outputs.cache-key }}-tools
+          key: ${{ needs.dependencies.outputs.cache-prefix }}-tools-${{ needs.dependencies.outputs.cache-revision }}
           fail-on-cache-miss: true
       - uses: actions/cache/restore@v6
         with:
@@ -116,14 +156,14 @@ jobs:
             !TBuild/Libraries/win64/cache_keys
             TBuild/Libraries/win64/cache_keys/*
             !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
-          key: ${{ needs.dependencies.outputs.cache-key }}-libraries
+          key: ${{ needs.dependencies.outputs.cache-prefix }}-libraries-${{ needs.dependencies.outputs.cache-revision }}
           fail-on-cache-miss: true
       - uses: actions/cache/restore@v6
         with:
           path: |
             TBuild/Libraries/win64/[qQ]t[_-]*
             TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
-          key: ${{ needs.dependencies.outputs.cache-key }}-qt
+          key: ${{ needs.dependencies.outputs.cache-prefix }}-qt-${{ needs.dependencies.outputs.cache-revision }}
           fail-on-cache-miss: true
       - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba
       - name: Configure and build the fork
