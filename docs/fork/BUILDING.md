@@ -41,13 +41,25 @@ fails. The preparation script's stage keys decide which outputs can be reused;
 a failed stage without its success key is rebuilt. Qt is saved after its stage
 key exists. The build job requires all three exact caches from its successful
 dependency job; it fails on missing handoff
-instead of silently compiling against incomplete dependencies. MSVC compilation
-uses sccache with embedded debug information. API values are read from the
+instead of silently compiling against incomplete dependencies. Completed Qt
+snapshots keep the installed prefix, including its libraries, tools, headers,
+plugins and CMake files. The duplicate source/build tree is removed while its
+stage directory and key remain, so preparation can reuse the installation.
+Rust source trees are retained for their generated bindings and rebuilds.
+MSVC compilation uses sccache. The application disables debug information
+through `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=`, which selects the project's
+`/DEBUG:NONE` linker path. Release optimization remains enabled; the portable
+artifact has no app PDB. This avoids the hosted runner's observed `LNK1102`
+failure while generating a full debug database. API values are read from the
 process environment by an initial CMake script; the application build tree
 and CMake cache are neither cached nor uploaded.
 
-Cold dependency preparation may exceed the available runner disk, cache quota
-or six-hour job limit. That has not been measured yet. If it does, stop and
+The first successful dependency preparation took about 114 minutes. Its
+untrimmed snapshots occupied about 11.5 GB, which caused tools/library cache
+eviction during app compilation. Trimming the duplicate Qt tree reduces that
+handoff; its final size must be checked in Actions. Cold dependency preparation
+may still exceed the available runner disk, cache quota or six-hour job limit.
+If it does, stop and
 use the named stage groups in `prepare.py` to split preparation further,
 increase cache capacity or choose a suitable runner. Do not claim that the
 separate app job solves an oversized dependency job. An interrupted or failed
