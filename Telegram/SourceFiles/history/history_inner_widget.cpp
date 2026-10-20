@@ -1624,8 +1624,9 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			}
 
 			const auto height = view->height();
-			context.reactionInfo
-				= capturing ? nullptr : _reactionsManager->currentReactionPaintInfo();
+			context.reactionInfo = capturing
+				? nullptr
+				: _reactionsManager->currentReactionPaintInfo().get();
 			context.outbg = view->hasOutLayout();
 			const auto selection = itemRenderSelection(
 				view,
@@ -1693,8 +1694,9 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			if ((context.clip.y() < height)
 				&& (hdrawtop < top + height)
 				&& !sendingAnimation.hasAnimatedMessage(item)) {
-				context.reactionInfo
-					= capturing ? nullptr : _reactionsManager->currentReactionPaintInfo();
+				context.reactionInfo = capturing
+					? nullptr
+					: _reactionsManager->currentReactionPaintInfo().get();
 				context.outbg = view->hasOutLayout();
 				const auto selection = itemRenderSelection(
 					view,

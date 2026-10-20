@@ -3119,7 +3119,7 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 			|| !sendingAnimation->hasAnimatedMessage(item)) {
 			if (_reactionsManager && !capturing) {
 				context.reactionInfo
-					= capturing ? nullptr : _reactionsManager->currentReactionPaintInfo();
+					= _reactionsManager->currentReactionPaintInfo();
 			}
 			context.outbg = view->hasOutLayout();
 			const auto selection = itemRenderSelection(view);
