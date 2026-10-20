@@ -11414,7 +11414,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		const auto textTop = backy + st::msgReplyPadding.top();
 		auto previewLeft = st::historyReplySkip;
 
-		const auto to = rtlrect(
+		const auto to = style::rtlrect(
 			previewLeft,
 			backy + (st::historyReplyHeight - st::historyReplyPreview) / 2,
 			st::historyReplyPreview,
@@ -11463,7 +11463,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 					const auto overEdit = _photoEditMedia
 						? _inPhotoEditOver.value(_inPhotoEdit ? 1. : 0.)
 						: 0.;
-					auto to = rtlrect(
+					auto to = style::rtlrect(
 						replyLeft,
 						(st::historyReplyHeight - st::historyReplyPreview) / 2
 							+ backy,
@@ -11570,7 +11570,7 @@ void HistoryWidget::paintEditHeader(
 		int top,
 		int outerWidth) const {
 	if (!rect.intersects(
-			rtlrect(left, top, outerWidth - left, st::normalFont->height,
+			style::rtlrect(left, top, outerWidth - left, st::normalFont->height,
 				outerWidth))) {
 		return;
 	}
@@ -11614,7 +11614,7 @@ void HistoryWidget::paintEditHeader(
 
 	// Restart timer only if we are sure that we've painted the whole timer.
 	if (rect.contains(
-			rtlrect(left, top, outerWidth - left, st::normalFont->height,
+			style::rtlrect(left, top, outerWidth - left, st::normalFont->height,
 				outerWidth))
 		&& (updateIn > 0)) {
 		_updateEditTimeLeftDisplay.callOnce(updateIn);
