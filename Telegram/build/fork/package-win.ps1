@@ -25,6 +25,7 @@ $checkout = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 Copy-Item (Join-Path $checkout 'LICENSE') $package
 Copy-Item (Join-Path $checkout 'LEGAL') $package
 Copy-Item (Join-Path $checkout 'docs/fork/BUILDING.md') (Join-Path $package 'README.md')
+Copy-Item (Join-Path $checkout 'docs/fork/IMPLEMENTATION.md') $package
 @'
 @echo off
 if not exist "%~dp0profile" mkdir "%~dp0profile"

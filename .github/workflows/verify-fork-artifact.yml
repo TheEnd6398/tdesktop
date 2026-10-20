@@ -1,0 +1,88 @@
+name: Verify Windows fork package
+
+on:
+  push:
+    branches:
+      - feature/liquid-glass-ui
+    paths:
+      - .github/workflows/verify-fork-artifact.yml
+      - Telegram/build/fork/verify-package.py
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: Native build artifact ID (empty selects the latest successful fork build)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download and verify the native package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, subprocess, sys, zipfile
+          repo = os.environ['GITHUB_REPOSITORY']
+          def gh(*args):
+              result = subprocess.run(['gh', *args], capture_output=True, text=True)
+              if result.returncode:
+                  raise RuntimeError(f'GitHub request failed with exit code {result.returncode}.')
+              return result.stdout
+          requested = os.environ.get('ARTIFACT_ID', '')
+          if requested:
+              artifact = json.loads(gh('api', f'repos/{repo}/actions/artifacts/{int(requested)}'))
+          else:
+              runs = json.loads(gh('api', f'repos/{repo}/actions/workflows/fork-win-x64.yml/runs?branch=feature%2Fliquid-glass-ui&status=success&per_page=1'))
+              run = runs['workflow_runs'][0]
+              artifacts = json.loads(gh('api', f'repos/{repo}/actions/runs/{run["id"]}/artifacts'))
+              artifact = next(a for a in artifacts['artifacts'] if not a['expired'] and a['name'].startswith('LiquidGlass-Windows-x64-'))
+          commit = artifact['workflow_run']['head_sha']
+          if artifact['expired'] or not re.fullmatch(r'[0-9a-f]{40}', commit):
+              raise RuntimeError('The selected artifact is expired or has invalid provenance.')
+          if artifact['name'] != f'LiquidGlass-Windows-x64-{commit}':
+              raise RuntimeError('Select an original native build artifact.')
+          run_id = artifact['workflow_run']['id']
+          native_run = json.loads(gh('api', f'repos/{repo}/actions/runs/{run_id}'))
+          if native_run['conclusion'] != 'success' or native_run['head_sha'] != commit:
+              raise RuntimeError('The native build did not succeed at the selected source commit.')
+          gh('run', 'download', str(run_id), '--repo', repo, '--name', artifact['name'], '--dir', 'artifact-check')
+          archive = pathlib.Path('artifact-check/LiquidGlass-Windows-x64.zip')
+          with zipfile.ZipFile(archive) as package:
+              binary_hash = hashlib.sha256(package.read('LiquidGlass/Telegram.exe')).hexdigest()
+              needs_guide = 'LiquidGlass/IMPLEMENTATION.md' not in package.namelist()
+          with zipfile.ZipFile(archive, 'a', compression=zipfile.ZIP_DEFLATED) as package:
+              if needs_guide:
+                  guide = json.loads(gh('api', f'repos/{repo}/contents/docs/fork/IMPLEMENTATION.md?ref={commit}'))
+                  package.writestr('LiquidGlass/IMPLEMENTATION.md', base64.b64decode(guide['content']))
+              package.writestr('LiquidGlass/BUILD-INFO.json', json.dumps({
+                  'source_commit': commit,
+                  'native_build_run': run_id,
+                  'native_build_artifact': artifact['id'],
+                  'executable_sha256': binary_hash,
+                  'verification_commit': os.environ['GITHUB_SHA'],
+                  'verification_run': os.environ['GITHUB_RUN_ID'],
+              }, indent=2) + '\n')
+          subprocess.run([sys.executable, 'Telegram/build/fork/verify-package.py', str(archive), '--commit', commit], check=True)
+          report = json.loads(pathlib.Path('artifact-check/verification.json').read_text())
+          if report['executable_sha256'] != binary_hash:
+              raise RuntimeError('Packaging changed the native executable.')
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'VERIFIED_SOURCE={commit}\n')
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: LiquidGlass-Windows-x64-${{ env.VERIFIED_SOURCE }}-verified
+          path: |
+            artifact-check/LiquidGlass-Windows-x64.zip
+            artifact-check/verification.json
+          if-no-files-found: error
+          retention-days: 14
