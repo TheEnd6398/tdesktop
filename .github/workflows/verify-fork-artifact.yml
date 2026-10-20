@@ -154,11 +154,31 @@ jobs:
               f'Portable ZIP SHA-256: `{digest}`.\n\n'
               'Real-chat screenshots, interactive light/dark theme acceptance, narrow/RTL behavior and performance remain unverified. '
               f'See the [implementation and Windows acceptance matrix](https://github.com/{repo}/blob/{commit}/docs/fork/IMPLEMENTATION.md).\n')
+          resolved = subprocess.run([
+              'gh', 'api', f'repos/{repo}/commits/{tag}', '--jq', '.sha',
+          ], capture_output=True, text=True, check=True).stdout.strip()
+          if resolved != commit:
+              raise RuntimeError('Create the release tag at the verified source commit before publishing.')
+          existing = subprocess.run([
+              'gh', 'release', 'view', tag, '--repo', repo, '--json', 'isDraft,assets',
+          ], capture_output=True, text=True)
+          if existing.returncode:
+              subprocess.run([
+                  'gh', 'release', 'create', tag, '--repo', repo, '--verify-tag', '--draft',
+                  '--title', f'Liquid Glass Windows x64 preview ({commit[:10]})',
+                  '--prerelease', '--latest=false', '--notes-file', str(notes),
+              ], check=True)
+          else:
+              release = json.loads(existing.stdout)
+              if not release['isDraft'] or release['assets']:
+                  raise RuntimeError('Publication requires a new release or an empty draft; existing assets are preserved.')
           subprocess.run([
-              'gh', 'release', 'create', tag, '--repo', repo, '--target', commit,
-              '--title', f'Liquid Glass Windows x64 preview ({commit[:10]})',
-              '--prerelease', '--latest=false', '--notes-file', str(notes),
+              'gh', 'release', 'upload', tag, '--repo', repo,
               str(archive), str(report_file), str(checksums),
+          ], check=True)
+          subprocess.run([
+              'gh', 'release', 'edit', tag, '--repo', repo, '--draft=false',
+              '--prerelease', '--latest=false', '--notes-file', str(notes),
           ], check=True)
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
               output.write(f'[Public portable download](https://github.com/{repo}/releases/download/{tag}/{archive.name})\n')

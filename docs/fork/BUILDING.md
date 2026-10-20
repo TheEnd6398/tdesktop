@@ -132,9 +132,13 @@ step result; it does not establish account, chat or coexistence behavior.
 Use the Windows verification matrix in [IMPLEMENTATION.md](IMPLEMENTATION.md)
 for interactive acceptance and known rendering limitations.
 
-To publish an existing successful native build without recompiling it, run
+To publish an existing successful native build without recompiling it, first
+push a tag named `liquid-glass-<first 10 source commit characters>` at that
+binary's source commit using maintainer credentials. Actions tokens may be
+unable to create tags at older commits that modify workflows. Run
 **Verify Windows fork package** manually with its native `artifact_id` and
-`publish_release` enabled. Verification runs first; publication creates a
-prerelease tagged with the binary's source commit, containing the portable ZIP,
-`verification.json` and `SHA256SUMS.txt`. The publication job needs repository
-contents write permission and leaves existing releases unchanged.
+`publish_release` enabled. Verification runs first; publication validates the
+tag, uploads the portable ZIP, `verification.json` and `SHA256SUMS.txt` to a
+new or empty draft, then publishes it as a prerelease. The publication job
+needs repository contents write permission. Existing assets and published
+releases are preserved.
