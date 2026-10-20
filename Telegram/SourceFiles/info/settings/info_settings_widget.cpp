@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/settings/info_settings_widget.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "info/info_memento.h"
 #include "settings/sections/settings_main.h"
 #include "settings/sections/settings_information.h"
@@ -63,6 +65,9 @@ Widget::Widget(
 		}))
 , _pinnedToTop(_inner->createPinnedToTop(this))
 , _pinnedToBottom(_inner->createPinnedToBottom(this)) {
+	if (!_inner->hasFlexibleTopBar()) {
+		Ui::SetupSmoothWheelScroll(scroll());
+	}
 	_inner->sectionShowOther(
 	) | rpl::on_next([=](Type type) {
 		controller->showSettings(type);

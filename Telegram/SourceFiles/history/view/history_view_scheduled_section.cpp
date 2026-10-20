@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_scheduled_section.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "history/view/controls/history_view_compose_controls.h"
 #include "history/view/history_view_empty_list_bubble.h"
 #include "history/view/history_view_top_bar_widget.h"
@@ -239,6 +241,7 @@ ScheduledWidget::ScheduledWidget(
 	_scroll->move(0, _topBar->height());
 	_scroll->show();
 	_scroll->setOverscrollBg(QColor(0, 0, 0, 0));
+	Ui::SetupSmoothWheelScroll(_scroll.get());
 	_scroll->setOverscrollEdges([=] {
 		return _inner->loadedAtTopKnown() && _inner->loadedAtTop();
 	}, [=] {
@@ -1420,6 +1423,7 @@ Context ScheduledWidget::listContext() {
 }
 
 bool ScheduledWidget::listScrollTo(int top, bool syntetic) {
+	Ui::ResetSmoothWheelScroll(_scroll.get());
 	top = std::clamp(top, 0, _scroll->scrollTopMax());
 	if (_scroll->scrollTop() == top) {
 		updateInnerVisibleArea();

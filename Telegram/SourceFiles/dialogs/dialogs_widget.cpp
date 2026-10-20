@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_widget.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "styles/style_fork_glass.h"
 
 #include "base/call_delayed.h"
@@ -435,6 +437,7 @@ Widget::Widget(
 , _peerSearch(&controller->session(), Api::PeerSearch::Type::WithSponsored)
 , _singleMessageSearch(&controller->session()) {
 	_glassNavigation.setShadow(st::glassShadow);
+	Ui::SetupSmoothWheelScroll(_scroll.data());
 	_searchControls->paintRequest() | rpl::on_next([=] {
 		if (!Ui::Glass::Enabled()) {
 			return;

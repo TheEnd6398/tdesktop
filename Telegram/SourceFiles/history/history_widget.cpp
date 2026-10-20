@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_widget.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "styles/style_fork_glass.h"
 
 #include "api/api_compose_with_ai.h"
@@ -397,6 +399,7 @@ HistoryWidget::HistoryWidget(
 		Ui::ElasticScroll::OverscrollType::Real,
 		Ui::ElasticScroll::OverscrollType::Real);
 	_scroll->setOverscrollBg(QColor(0, 0, 0, 0));
+	Ui::SetupSmoothWheelScroll(_scroll.data());
 	_scroll->setOverscrollEdges(
 		[=] { return historyLoadedAtTop(); },
 		[=] { return historyLoadedAtBottom(); });
@@ -3235,6 +3238,7 @@ void HistoryWidget::showHistory(
 		PeerId peerId,
 		MsgId showAtMsgId,
 		const Window::SectionShow &params) {
+	Ui::ResetSmoothWheelScroll(_scroll.data());
 	_pinnedClickedId = FullMsgId();
 	_minPinnedId = std::nullopt;
 	_showAtMsgParams = {};
@@ -3698,6 +3702,7 @@ void HistoryWidget::showHistory(
 }
 
 void HistoryWidget::setHistory(History *history) {
+	Ui::ResetSmoothWheelScroll(_scroll.data());
 	if (_history == history) {
 		return;
 	}
@@ -7657,7 +7662,7 @@ void HistoryWidget::moveFieldControls() {
 
 	const auto fullWidthButtonRect = myrtlrect(
 		0,
-		bottom - _botStart->height(),
+		bottom + (glass ? st::glassGap : 0) - _botStart->height(),
 		width(),
 		_botStart->height());
 	_botStart->setGeometry(fullWidthButtonRect);
@@ -11686,6 +11691,7 @@ bool HistoryWidget::touchScroll(const QPoint &delta) {
 }
 
 void HistoryWidget::synteticScrollToY(int y) {
+	Ui::ResetSmoothWheelScroll(_scroll.data());
 	_synteticScrollEvent = true;
 	if (_scroll->scrollTop() == y) {
 		visibleAreaUpdated();

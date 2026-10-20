@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/info_content_widget.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "api/api_who_reacted.h"
 #include "boxes/peer_list_box.h"
 #include "data/data_chat.h"
@@ -374,6 +376,7 @@ rpl::producer<int> ContentWidget::scrollTopValue() const {
 }
 
 void ContentWidget::scrollTopRestore(int scrollTop) {
+	Ui::ResetSmoothWheelScroll(_scroll.data());
 	_scrollTopRestore = scrollTop;
 	applyScrollTopRestore();
 }
@@ -392,6 +395,7 @@ void ContentWidget::applyScrollTopRestore() {
 }
 
 void ContentWidget::scrollTo(const Ui::ScrollToRequest &request) {
+	Ui::ResetSmoothWheelScroll(_scroll.data());
 	_scroll->scrollTo(request);
 }
 

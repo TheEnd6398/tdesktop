@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_chat_section.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "history/admin_log/history_admin_log_section.h"
 #include "history/view/controls/history_view_top_controls.h"
 #include "history/view/controls/history_view_bottom_controls.h"
@@ -577,6 +579,7 @@ ChatWidget::ChatWidget(
 	_scroll->move(0, _topBar->height());
 	_scroll->show();
 	_scroll->setOverscrollBg(QColor(0, 0, 0, 0));
+	Ui::SetupSmoothWheelScroll(_scroll.get());
 	_scroll->setOverscrollEdges([=] {
 		return _inner->loadedAtTopKnown() && _inner->loadedAtTop();
 	}, [=] {
@@ -3890,6 +3893,7 @@ void ChatWidget::doSetInnerFocus() {
 bool ChatWidget::showInternal(
 		not_null<Window::SectionMemento*> memento,
 		const Window::SectionShow &params) {
+	Ui::ResetSmoothWheelScroll(_scroll.get());
 	if (auto logMemento = dynamic_cast<ChatMemento*>(memento.get())) {
 		if (logMemento->id() == _id) {
 			if (params.reapplyLocalDraft) {
@@ -4681,6 +4685,7 @@ Context ChatWidget::listContext() {
 }
 
 bool ChatWidget::listScrollTo(int top, bool syntetic) {
+	Ui::ResetSmoothWheelScroll(_scroll.get());
 	top = std::clamp(top, 0, _scroll->scrollTopMax());
 	const auto scrolled = (_scroll->scrollTop() != top);
 	_synteticScrollEvent = syntetic;

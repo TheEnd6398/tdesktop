@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_main_menu.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "mainwidget.h"
 #include "styles/style_fork_glass.h"
 
@@ -365,6 +367,7 @@ MainMenu::MainMenu(
 	setupAccounts();
 	setupArchive();
 	setupMenu();
+	Ui::SetupSmoothWheelScroll(_scroll.data());
 
 	const auto shadow = Ui::CreateChild<Ui::PlainShadow>(this);
 	widthValue(
