@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_filters_menu.h"
 
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
+
 #include "menu/menu_mark_as_read.h"
 #include "mainwindow.h"
 #include "window/window_session_controller.h"
@@ -569,15 +572,26 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 	// role change.
 	const auto listItem = (id >= 0);
 	const auto mode = tabsMode();
+	const auto originalStyle = &buttonStyle();
+	auto renderedStyle = originalStyle;
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+	auto glassStyle = std::make_unique<style::SideBarButton>(*originalStyle);
+	glassStyle->textBg = glassStyle->textBgActive = st::transparent;
+	renderedStyle = glassStyle.get();
+#endif
 	auto prepared = object_ptr<Ui::SideBarButton>(
 		container,
 		id ? title.text : TextWithEntities{ tr::lng_filters_all(tr::now) },
-		buttonStyle(),
+		*renderedStyle,
 		Core::TextContext({
 			.session = &_session->session(),
 			.customEmojiLoopLimit = isStatic ? -1 : 0,
 		}),
 		paused);
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+	prepared->lifetime().make_state<std::unique_ptr<style::SideBarButton>>(
+		std::move(glassStyle));
+#endif
 	prepared->setLocked(locked);
 	prepared->setIsListItem(listItem);
 	prepared->setShowIcon(mode != Ui::ChatsFiltersTabsMode::TextOnly);
@@ -587,6 +601,24 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 		: container->add(std::move(prepared));
 	auto button = base::unique_qptr<Ui::SideBarButton>(std::move(added));
 	const auto raw = button.get();
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+	raw->setAttribute(Qt::WA_OpaquePaintEvent, false);
+	raw->paintRequest() | rpl::on_next([=] {
+		auto p = QPainter(raw);
+		const auto active = (_session->activeChatsFilterCurrent() == id);
+		const auto bg = active ? originalStyle->textBgActive : originalStyle->textBg;
+		if (!Ui::Glass::Enabled()) {
+			p.fillRect(raw->rect(), bg);
+		} else if (active || raw->isOver()) {
+			Ui::Glass::Surface().paint(p, raw->rect().marginsRemoved(QMargins(
+				st::glassInset, st::glassInset, st::glassInset, st::glassInset)),
+				bg->c, st::glassRowRadius);
+		}
+	}, raw->lifetime());
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		raw->update();
+	}, raw->lifetime());
+#endif
 	const auto nameText = id
 		? title.text.text
 		: tr::lng_filters_all(tr::now);

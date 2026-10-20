@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/info_top_bar.h"
 
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
+
 #include "dialogs/ui/dialogs_stories_list.h"
 #include "lang/lang_keys.h"
 #include "info/info_wrap_widget.h"
@@ -43,7 +46,11 @@ TopBar::TopBar(
 	if (_st.radius) {
 		_roundRect.emplace(_st.radius, _st.bg);
 	}
-	setAttribute(Qt::WA_OpaquePaintEvent, !_roundRect);
+	setAttribute(Qt::WA_OpaquePaintEvent, !_roundRect && !Ui::Glass::Enabled());
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		setAttribute(Qt::WA_OpaquePaintEvent, !_roundRect && !Ui::Glass::Enabled());
+		update();
+	}, lifetime());
 	setSelectedItems(std::move(selectedItems));
 	updateControlsVisibility(anim::type::instant);
 }
@@ -510,7 +517,13 @@ void TopBar::paintEvent(QPaintEvent *e) {
 		_highlight = false;
 		startHighlightAnimation();
 	}
-	if (!_roundRect) {
+	if (Ui::Glass::Enabled() && !_roundRect) {
+		auto surface = Ui::Glass::Surface();
+		surface.setShadow(st::glassShadow);
+		surface.paint(p, rect().marginsRemoved(QMargins(
+			st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)),
+			anim::color(_st.bg, _st.highlightBg, highlight));
+	} else if (!_roundRect) {
 		const auto brush = anim::brush(_st.bg, _st.highlightBg, highlight);
 		p.fillRect(e->rect(), brush);
 	} else if (highlight > 0.) {

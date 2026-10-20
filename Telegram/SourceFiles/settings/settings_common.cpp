@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "settings/settings_common.h"
 
+#include "ui/widgets/glass_navigation_button.h"
+
 #include "base/timer.h"
 #include "lottie/lottie_icon.h"
 #include "menu/menu_send_details.h"
@@ -31,6 +33,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 #include "styles/style_widgets.h"
+#include "styles/style_window.h"
 
 #include <QAction>
 
@@ -461,7 +464,11 @@ object_ptr<Button> CreateButtonWithIcon(
 		rpl::producer<QString> text,
 		const style::SettingsButton &st,
 		IconDescriptor &&descriptor) {
-	auto result = object_ptr<Button>(parent, std::move(text), st);
+	const auto owner = dynamic_cast<Ui::RpWidget*>(parent.get());
+	const auto &rendered = (owner && (&st == &st::mainMenuAddAccountButton))
+		? Ui::Glass::MenuButtonStyle(st, owner->lifetime())
+		: st;
+	auto result = object_ptr<Ui::Glass::NavigationButton>(parent, std::move(text), rendered);
 	const auto button = result.data();
 	if (descriptor) {
 		AddButtonIcon(button, st, std::move(descriptor));

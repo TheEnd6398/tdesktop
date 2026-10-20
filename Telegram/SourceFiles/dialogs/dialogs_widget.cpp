@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_widget.h"
 
+#include "styles/style_fork_glass.h"
+
 #include "base/call_delayed.h"
 #include "base/qt/qt_key_modifiers.h"
 #include "base/options.h"
@@ -409,7 +411,8 @@ Widget::Widget(
 	.under = object_ptr<MenuUnderButton>(_searchControls),
 })
 , _searchForNarrowLayout(_searchControls, st::dialogsSearchForNarrowFilters)
-, _search(_searchControls, st::dialogsFilter, tr::lng_dlg_filter())
+, _search(_searchControls,
+	Ui::Glass::FieldStyle(st::dialogsFilter, lifetime()), tr::lng_dlg_filter())
 , _chooseFromUser(
 	_searchControls,
 	object_ptr<Ui::IconButton>(this, st::dialogsSearchFrom))
@@ -431,6 +434,27 @@ Widget::Widget(
 , _searchTimer([=] { search(); })
 , _peerSearch(&controller->session(), Api::PeerSearch::Type::WithSponsored)
 , _singleMessageSearch(&controller->session()) {
+	_glassNavigation.setShadow(st::glassShadow);
+	_searchControls->paintRequest() | rpl::on_next([=] {
+		if (!Ui::Glass::Enabled()) {
+			return;
+		}
+		auto p = QPainter(_searchControls);
+		if (!_mainMenu.toggle->isHidden()) {
+			_glassNavigation.paint(p,
+				Ui::Glass::ButtonRect(_mainMenu.toggle->geometry()), st::dialogsBg->c);
+		}
+		if (!_search->isHidden()) {
+			_glassNavigation.paint(p, _search->geometry(),
+				(_search->hasFocus()
+					? st::filterInputActiveBg
+					: st::filterInputInactiveBg)->c);
+		}
+	}, lifetime());
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		update();
+		_searchControls->update();
+	}, lifetime());
 	const auto makeChildListShown = [](PeerId peerId, float64 shown) {
 		return InnerWidget::ChildListShown{ peerId, shown };
 	};

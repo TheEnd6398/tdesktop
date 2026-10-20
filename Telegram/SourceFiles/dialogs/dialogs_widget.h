@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "ui/chat/glass_surface.h"
+
 #include "api/api_peer_search.h"
 #include "base/timer.h"
 #include "dialogs/dialogs_key.h"
@@ -333,6 +335,7 @@ private:
 	std::unique_ptr<Ui::AbstractButton> _frozenAccountBar;
 
 	object_ptr<Ui::RpWidget> _searchControls;
+	Ui::Glass::Surface _glassNavigation;
 	object_ptr<HistoryView::TopBarWidget> _subsectionTopBar = { nullptr };
 	struct {
 		object_ptr<Ui::IconButton> toggle;

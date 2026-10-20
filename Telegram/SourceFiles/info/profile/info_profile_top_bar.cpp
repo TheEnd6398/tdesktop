@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_top_bar.h"
 
+#include "ui/chat/glass_surface.h"
+
 #include "api/api_peer_colors.h"
 #include "api/api_peer_photo.h"
 #include "api/api_user_privacy.h"
@@ -197,15 +199,19 @@ void BackdropIconButton::paintEvent(QPaintEvent *e) {
 	const auto shown = _backdropColor
 		? _overAnimation.value(isOver() ? 1. : 0.)
 		: 0.;
-	if (shown > 0.) {
+	if (shown > 0. || (Ui::Glass::Enabled() && _backdropColor)) {
 		auto p = QPainter(this);
 		auto hq = PainterHighQualityEnabler(p);
-		p.setOpacity(shown);
+		p.setOpacity(Ui::Glass::Enabled() ? (0.65 + 0.35 * shown) : shown);
 		p.setPen(Qt::NoPen);
 		p.setBrush(_rippleColor.color());
-		p.drawEllipse(QRect(
+		const auto area = QRect(
 			st().rippleAreaPosition,
-			QSize(st().rippleAreaSize, st().rippleAreaSize)));
+			QSize(st().rippleAreaSize, st().rippleAreaSize));
+		p.drawEllipse(area);
+		if (Ui::Glass::Enabled()) {
+			Ui::Glass::PaintHighlight(p, area);
+		}
 	}
 	Ui::IconButton::paintEvent(e);
 }

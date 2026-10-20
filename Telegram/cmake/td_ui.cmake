@@ -488,6 +488,8 @@ PRIVATE
     ui/chat/glass_surface.h
     ui/chat/glass_material.cpp
     ui/chat/glass_material.h
+    ui/widgets/glass_navigation_button.cpp
+    ui/widgets/glass_navigation_button.h
     ui/chat/glass_blur.cpp
     ui/chat/glass_blur.h
     ui/chat/pinned_bar.h

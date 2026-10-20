@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "settings/sections/settings_information.h"
 
+#include "ui/chat/glass_surface.h"
+#include "ui/widgets/glass_navigation_button.h"
+
 #include "settings/sections/settings_main.h"
 #include "settings/settings_builder.h"
 #include "settings/settings_common_session.h"
@@ -817,10 +820,14 @@ void SetupAccountsWrap(
 	) | rpl::map([=] {
 		return user->name();
 	}));
-	auto result = object_ptr<Ui::SettingsButton>(
+	const auto owner = dynamic_cast<Ui::RpWidget*>(parent);
+	const auto &accountStyle = owner
+		? Ui::Glass::MenuButtonStyle(st::mainMenuAddAccountButton, owner->lifetime())
+		: st::mainMenuAddAccountButton;
+	auto result = object_ptr<Ui::Glass::NavigationButton>(
 		parent,
 		rpl::duplicate(text),
-		st::mainMenuAddAccountButton);
+		accountStyle);
 	const auto raw = result.data();
 
 	{

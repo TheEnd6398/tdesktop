@@ -7,3 +7,4 @@ glassShadow: 4px;
 glassComposerRadius: 24px;
 glassCompactWidth: 420px;
 glassBlurSupport: 36px;
+glassRowRadius: 16px;
