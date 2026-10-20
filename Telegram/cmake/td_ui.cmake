@@ -16,6 +16,7 @@ set(style_files
     ui/filter_icons.style
     ui/menu_icons.style
     ui/chat/chat.style
+    ui/chat/fork_glass.style
     ui/chat/chat_style.style
     history/view/history_view_about_view.style
     ui/effects/credits.style
@@ -483,6 +484,10 @@ PRIVATE
     ui/chat/more_chats_bar.cpp
     ui/chat/more_chats_bar.h
     ui/chat/pinned_bar.cpp
+    ui/chat/glass_surface.cpp
+    ui/chat/glass_surface.h
+    ui/chat/glass_blur.cpp
+    ui/chat/glass_blur.h
     ui/chat/pinned_bar.h
     ui/chat/requests_bar.cpp
     ui/chat/requests_bar.h

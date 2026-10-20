@@ -165,6 +165,10 @@ EditFlagsDescriptor<PowerSaving::Flags> PowerSavingLabels() {
 		},
 		{ kChatSpoiler, tr::lng_settings_power_chat_spoiler(tr::now) },
 		{ kChatEffects, tr::lng_settings_power_chat_effects(tr::now) },
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+		{ kGlassBlur, tr::lng_settings_power_glass_blur(tr::now) },
+		{ kSmoothScrolling, tr::lng_settings_power_smooth_scroll(tr::now) },
+#endif
 	};
 	auto calls = std::vector<Label>{
 		{

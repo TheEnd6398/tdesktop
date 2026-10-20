@@ -190,6 +190,7 @@ jobs:
             -D CMAKE_CXX_COMPILER_LAUNCHER=sccache `
             -D TDESKTOP_API_TEST=OFF `
             -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON `
+            -D TDESKTOP_FORK_LIQUID_GLASS=ON `
             -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build ../out --config Release --target Telegram --parallel 4

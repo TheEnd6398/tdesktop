@@ -6,6 +6,10 @@
 
 option(TDESKTOP_API_TEST "Use test API credentials." OFF)
 option(TDESKTOP_BUILD_UPDATE_TESTS "Build the focused update verification test." OFF)
+option(TDESKTOP_FORK_LIQUID_GLASS "Enable the fork's Liquid Glass interface." ON)
+if (TDESKTOP_FORK_LIQUID_GLASS)
+    add_compile_definitions(TDESKTOP_FORK_LIQUID_GLASS)
+endif()
 set(TDESKTOP_API_ID "0" CACHE STRING "Provide 'api_id' for the Telegram API access.")
 set(TDESKTOP_API_HASH "" CACHE STRING "Provide 'api_hash' for the Telegram API access.")
 
