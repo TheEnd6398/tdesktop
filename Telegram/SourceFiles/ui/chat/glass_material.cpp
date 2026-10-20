@@ -147,6 +147,31 @@ void Surface::setShadow(int shadow) {
 	_shadow = shadow;
 }
 
+void PaintButtonFeedback(
+		QPainter &p,
+		QRect rect,
+		QColor color,
+		qreal hover,
+		qreal pressed) {
+	if (rect.isEmpty() || (hover <= 0. && pressed <= 0.)) {
+		return;
+	}
+	p.save();
+	p.setRenderHint(QPainter::Antialiasing);
+	const auto radius = rect.height() / 2.;
+	auto path = QPainterPath();
+	path.addRoundedRect(QRectF(rect), radius, radius);
+	p.setClipPath(path, Qt::IntersectClip);
+	color.setAlphaF(std::clamp(0.08 * hover + 0.12 * pressed, 0., 1.));
+	p.fillPath(path, color);
+	auto light = QLinearGradient(rect.topLeft(), rect.bottomRight());
+	light.setColorAt(0., QColor(255, 255, 255,
+		int(std::clamp(hover * 28. + pressed * 20., 0., 255.))));
+	light.setColorAt(1., Qt::transparent);
+	p.fillPath(path, light);
+	p.restore();
+}
+
 quint64 Surface::checksum() const {
 	return _checksum;
 }

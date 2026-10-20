@@ -13,6 +13,12 @@ namespace Ui::Glass {
 void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds);
 void PaintHighlight(QPainter &p, QRect rect, int radius = 0);
 void PaintFocus(QPainter &p, QRect rect, QColor color, qreal opacity, int radius);
+void PaintButtonFeedback(
+	QPainter &p,
+	QRect rect,
+	QColor color,
+	qreal hover,
+	qreal pressed);
 
 class Surface final {
 public:

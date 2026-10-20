@@ -87,6 +87,30 @@ int main(int argc, char **argv) {
 	Check(region.pixel(15, 20) == qRgb(0, 255, 0),
 		"Transparent content capture lost foreground messages.");
 	for (const auto dpr : { 1., 1.25, 1.5, 2., 3. }) {
+		auto feedback = QImage(QSize(60 * dpr, 60 * dpr),
+			QImage::Format_ARGB32_Premultiplied);
+		feedback.setDevicePixelRatio(dpr);
+		feedback.fill(Qt::transparent);
+		const auto paintFeedback = [&](qreal hover, qreal pressed) {
+			auto p = QPainter(&feedback);
+			Ui::Glass::PaintButtonFeedback(p, QRect(10, 10, 40, 40),
+				Qt::blue, hover, pressed);
+			Check(p.opacity() == 1. && p.transform().isIdentity(),
+				"Button feedback leaked painter state.");
+		};
+		const auto feedbackCenter = QPoint(30 * dpr, 30 * dpr);
+		paintFeedback(0., 0.);
+		Check(qAlpha(feedback.pixel(feedbackCenter)) == 0,
+			"An idle glass button painted feedback.");
+		paintFeedback(1., 0.);
+		const auto hoverAlpha = qAlpha(feedback.pixel(feedbackCenter));
+		Check(hoverAlpha > 0, "Hover feedback was invisible.");
+		feedback.fill(Qt::transparent);
+		paintFeedback(1., 1.);
+		Check(qAlpha(feedback.pixel(feedbackCenter)) > hoverAlpha,
+			"Pressed feedback did not deepen the glass material.");
+		Check(qAlpha(feedback.pixel(10 * dpr, 10 * dpr)) == 0,
+			"Glass button feedback painted outside its circular outline.");
 		for (const auto tint : { QColor(245, 245, 245), QColor(28, 30, 33) }) {
 			auto surface = Ui::Glass::Surface();
 			surface.setShadow(4);

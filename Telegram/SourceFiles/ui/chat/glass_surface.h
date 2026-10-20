@@ -19,6 +19,7 @@ struct ScrollArea;
 } // namespace style
 
 namespace Ui {
+class AbstractButton;
 class RpWidget;
 } // namespace Ui
 
@@ -29,6 +30,7 @@ void SetEnabled(bool enabled);
 [[nodiscard]] rpl::producer<bool> EnabledValue();
 [[nodiscard]] bool BlurEnabled();
 [[nodiscard]] QRect ButtonRect(QRect rect);
+void BindButtonFeedback(not_null<AbstractButton*> button);
 [[nodiscard]] const style::InputField &FieldStyle(
 	const style::InputField &original,
 	rpl::lifetime &lifetime);
