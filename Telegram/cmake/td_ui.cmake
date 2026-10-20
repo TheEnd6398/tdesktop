@@ -484,8 +484,6 @@ PRIVATE
     ui/chat/more_chats_bar.cpp
     ui/chat/more_chats_bar.h
     ui/chat/pinned_bar.cpp
-    ui/chat/glass_surface.cpp
-    ui/chat/glass_surface.h
     ui/chat/glass_material.cpp
     ui/chat/glass_material.h
     ui/widgets/glass_navigation_button.cpp

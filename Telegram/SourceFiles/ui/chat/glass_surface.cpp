@@ -27,6 +27,7 @@ public:
 		not_null<RpWidget*> target,
 		not_null<QWidget*> source,
 		not_null<Surface*> surface);
+	~Backdrop() override;
 
 private:
 	bool eventFilter(QObject *object, QEvent *event) override;
@@ -69,6 +70,12 @@ Backdrop::Backdrop(
 		schedule();
 	}, _lifetime);
 	schedule();
+}
+
+Backdrop::~Backdrop() {
+	if (const auto app = QCoreApplication::instance()) {
+		app->removeEventFilter(this);
+	}
 }
 
 QRect Backdrop::sourceRect() const {

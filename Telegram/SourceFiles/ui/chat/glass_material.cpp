@@ -68,13 +68,15 @@ void Surface::prepare(QRect bounds, qreal dpr, const Source &source) {
 	}
 	const auto checksum = qHashBits(_source.constBits(), _source.sizeInBytes(),
 		quint64(_source.width()) * 65537 + _source.height());
-	if (_prepared && _sourceChecksum == checksum) {
+	const auto radius = std::max(1, int(std::round(3 * std::min(dpr, qreal(2.)))));
+	if (_prepared && _sourceChecksum == checksum && _radius == radius) {
 		return;
 	}
 	_sourceChecksum = checksum;
 	_prepared = true;
+	_radius = radius;
 	std::memcpy(_image.bits(), _source.constBits(), _source.sizeInBytes());
-	Blur(_image, _scratch, std::max(1, int(std::round(3 * std::min(dpr, qreal(2.))))));
+	Blur(_image, _scratch, radius);
 	_checksum = qHashBits(_image.constBits(), _image.sizeInBytes(),
 		quint64(_image.width()) * 65537 + _image.height());
 }

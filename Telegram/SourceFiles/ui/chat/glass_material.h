@@ -33,6 +33,7 @@ private:
 	quint64 _checksum = 0;
 	quint64 _sourceChecksum = 0;
 	bool _prepared = false;
+	int _radius = 0;
 
 };
 
