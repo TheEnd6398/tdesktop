@@ -41,6 +41,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "window/window_adaptive.h"
 #include "window/window_session_controller.h"
+#include "window/section_widget.h"
+#include "ui/power_saving.h"
 #include "window/window_peer_menu.h"
 #include "calls/calls_instance.h"
 #include "data/stickers/data_custom_emoji.h"
@@ -69,6 +71,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_dialogs.h"
 #include "styles/style_chat.h"
 #include "styles/style_info.h"
+#include "styles/style_fork_glass.h"
 
 #include <QtGui/QWindow>
 
@@ -130,7 +133,14 @@ TopBarWidget::TopBarWidget(
 , _menuToggle(this, st::topBarMenuToggle)
 , _titlePeerText(st::windowMinWidth / 3)
 , _onlineUpdater([=] { updateOnlineDisplay(); }) {
-	setAttribute(Qt::WA_OpaquePaintEvent);
+	setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
+	Ui::Glass::EnabledValue() | rpl::on_next([=] {
+		setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
+		resizeToWidth(width());
+		updateControlsGeometry();
+		update();
+	}, lifetime());
+	PowerSaving::Changes() | rpl::on_next([=] { update(); }, lifetime());
 
 	_clear->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
 	_forward->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
@@ -517,7 +527,7 @@ bool TopBarWidget::eventFilter(QObject *obj, QEvent *e) {
 }
 
 int TopBarWidget::resizeGetHeight(int newWidth) {
-	return st::topBarHeight;
+	return st::topBarHeight + (Ui::Glass::Enabled() ? 2 * st::glassGap : 0);
 }
 
 void TopBarWidget::paintEvent(QPaintEvent *e) {
@@ -534,10 +544,46 @@ void TopBarWidget::paintEvent(QPaintEvent *e) {
 		: -st::topBarHeight;
 	const auto slidingTop = std::max(selectedButtonsTop, searchFieldTop);
 
-	p.fillRect(QRect(0, 0, width(), st::topBarHeight), st::topBarBg);
+	if (Ui::Glass::Enabled()) {
+		paintGlass(p);
+		p.translate(0, st::glassGap);
+	} else {
+		p.fillRect(QRect(0, 0, width(), st::topBarHeight), st::topBarBg);
+	}
 	if (slidingTop < 0) {
 		p.translate(0, slidingTop + st::topBarHeight);
 		paintTopBar(p);
+	}
+}
+
+QRect TopBarWidget::glassTitleRect() const {
+	const auto left = (_back->isHidden() && _cancelChoose->isHidden())
+		? st::glassMargin
+		: st::glassMargin + _back->width() + st::glassGap;
+	return myrtlrect(
+		left,
+		st::glassGap,
+		std::max(0, width() - left - _rightTaken - st::glassGap),
+		st::topBarHeight);
+}
+
+void TopBarWidget::paintGlass(Painter &p) {
+	Ui::Glass::PrepareChat(_glass, this, _controller);
+	if (showSelectedActions() || _searchMode || _selectedShown.animating()
+		|| _searchShown.animating() || _chooseForReportReason) {
+		_glass.paint(p, rect().marginsRemoved(QMargins(
+			st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)),
+			st::topBarBg->c);
+		return;
+	}
+	_glass.paint(p, glassTitleRect(), st::topBarBg->c);
+	for (const auto button : { _back.data(), _cancelChoose.data(),
+		_call.data(), _groupCall.data(), _search.data(),
+		_infoToggle.data(), _menuToggle.data() }) {
+		if (!button->isHidden()) {
+			_glass.paint(p, Ui::Glass::ButtonRect(button->geometry()),
+				st::topBarBg->c);
+		}
 	}
 }
 
@@ -635,7 +681,7 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			p.setFont(st::historySavedFont);
 			p.drawTextLeft(
 				nameleft,
-				(height() - st::historySavedFont->height) / 2,
+				(st::topBarHeight - st::historySavedFont->height) / 2,
 				width(),
 				text);
 			p.setOpacity(1.);
@@ -1146,9 +1192,12 @@ void TopBarWidget::updateControlsGeometry() {
 	auto searchFieldTop = _searchField
 		? countSelectedButtonsTop(_searchShown.value(_searchMode ? 1. : 0.))
 		: -st::topBarHeight;
+	const auto glass = Ui::Glass::Enabled();
+	const auto margin = glass ? st::glassMargin : 0;
+	const auto gap = glass ? st::glassGap : 0;
 	const auto otherButtonsTop = std::max(selectedButtonsTop, searchFieldTop)
-		+ st::topBarHeight;
-	const auto backButtonTop = selectedButtonsTop + st::topBarHeight;
+		+ st::topBarHeight + gap;
+	const auto backButtonTop = selectedButtonsTop + st::topBarHeight + gap;
 	auto buttonsLeft = st::topBarActionSkip
 		+ (_controller->adaptive().isOneColumn() ? 0 : st::lineWidth);
 	auto buttonsWidth = (_forward->isHidden() ? 0 : _forward->contentWidth())
@@ -1211,18 +1260,19 @@ void TopBarWidget::updateControlsGeometry() {
 	_clear->moveToRight(st::topBarActionSkip, selectedButtonsTop);
 
 	if (!_cancelChoose->isHidden()) {
-		_leftTaken = 0;
+		_leftTaken = margin;
 		_cancelChoose->moveToLeft(_leftTaken, otherButtonsTop);
 		_leftTaken += _cancelChoose->width();
 	} else if (_back->isHidden()) {
-		_leftTaken = st::topBarArrowPadding.right();
+		_leftTaken = st::topBarArrowPadding.right() + margin;
 	} else {
 		_leftTaken = anim::interpolate(
-			0,
+			margin,
 			(_narrowWidth - _back->width()) / 2,
 			_narrowRatio);
 		_back->moveToLeft(_leftTaken, backButtonTop);
 		_leftTaken += _back->width();
+		_leftTaken += gap;
 	}
 	if (_info && !_info->isHidden()) {
 		if (_back->isHidden() && _narrowRatio > 0.) {
@@ -1269,7 +1319,7 @@ void TopBarWidget::updateControlsGeometry() {
 		updateSearchJumpToDateVisibility();
 	}
 
-	_rightTaken = 0;
+	_rightTaken = margin;
 	if (rootChatsListBar() && _activeChat.key.folder()) {
 		const auto &toggle = st::topBarMenuToggle;
 		const auto narrowLeft = (_narrowWidth - toggle.icon.width()) / 2
@@ -1286,17 +1336,19 @@ void TopBarWidget::updateControlsGeometry() {
 	if (_menuToggle->isHidden()) {
 		_rightTaken += (_menuToggle->width() - _search->width());
 	} else {
-		_rightTaken += _menuToggle->width() + st::topBarSkip;
+		_rightTaken += _menuToggle->width() + (glass ? gap : st::topBarSkip);
 	}
 	_infoToggle->moveToRight(_rightTaken, otherButtonsTop);
 	if (!_infoToggle->isHidden()) {
 		_infoToggle->moveToRight(_rightTaken, otherButtonsTop);
 		_rightTaken += _infoToggle->width();
+		_rightTaken += gap;
 	}
 	if (!_call->isHidden() || !_groupCall->isHidden()) {
 		_call->moveToRight(_rightTaken, otherButtonsTop);
 		_groupCall->moveToRight(_rightTaken, otherButtonsTop);
 		_rightTaken += _call->width();
+		_rightTaken += gap;
 	}
 	_search->moveToRight(_rightTaken, otherButtonsTop);
 	if (!_search->isHidden()) {
@@ -1315,7 +1367,8 @@ void TopBarWidget::finishAnimating() {
 void TopBarWidget::setAnimatingMode(bool enabled) {
 	if (_animatingMode != enabled) {
 		_animatingMode = enabled;
-		setAttribute(Qt::WA_OpaquePaintEvent, !_animatingMode);
+		setAttribute(Qt::WA_OpaquePaintEvent,
+			!_animatingMode && !Ui::Glass::Enabled());
 		finishAnimating();
 	} else if (!enabled) {
 		finishAnimating();

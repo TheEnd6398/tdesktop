@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "ui/chat/glass_surface.h"
+
 #include "ui/rp_widget.h"
 #include "ui/unread_badge.h"
 #include "ui/effects/animations.h"
@@ -188,6 +190,8 @@ private:
 	void connectingAnimationCallback();
 
 	void paintTopBar(Painter &p);
+	void paintGlass(Painter &p);
+	[[nodiscard]] QRect glassTitleRect() const;
 	[[nodiscard]] PeerData *titleNamePeer() const;
 	void paintStatus(
 		Painter &p,
@@ -270,6 +274,7 @@ private:
 	bool _titlePeerTextOnline = false;
 	int _leftTaken = 0;
 	int _rightTaken = 0;
+	Ui::Glass::Surface _glass;
 	float64 _titleShownRatio = 1.;
 	bool _animatingMode = false;
 	std::unique_ptr<Ui::InfiniteRadialAnimation> _connecting;
