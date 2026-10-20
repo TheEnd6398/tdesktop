@@ -23,6 +23,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QLibraryInfo>
+#include <QtCore/QTemporaryFile>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -340,7 +341,11 @@ void Launcher::init() {
 	prepareSettings();
 	initQtMessageLogging();
 
+#if defined Q_OS_WIN && defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+	QApplication::setApplicationName(u"LiquidGlass"_q);
+#else
 	QApplication::setApplicationName(u"TelegramDesktop"_q);
+#endif
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 	// fallback session management is useless for tdesktop since it doesn't have
@@ -473,7 +478,11 @@ void Launcher::writeInstallBetaVersionsSetting() {
 }
 
 bool Launcher::checkPortableVersionFolder() {
+#if defined Q_OS_WIN && defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+	return true;
+#else
 	return CheckPortableVersionFolder();
+#endif
 }
 
 QStringList Launcher::readArguments(int argc, char *argv[]) const {
@@ -511,6 +520,20 @@ void Launcher::prepareSettings() {
 	}
 
 	processArguments();
+#if defined Q_OS_WIN && defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+	auto directory = path.isEmpty()
+		? QString()
+		: QFileInfo(path).absoluteDir().filePath(u"profile"_q) + '/';
+	auto probe = QTemporaryFile(directory + u"write-test-XXXXXX"_q);
+	if (directory.isEmpty() || !QDir().mkpath(directory)
+		|| !probe.open()) {
+		directory = psAppDataPath();
+		if (!directory.isEmpty()) {
+			QDir().mkpath(directory);
+		}
+	}
+	cForceWorkingDir(directory);
+#endif
 }
 
 void Launcher::initQtMessageLogging() {

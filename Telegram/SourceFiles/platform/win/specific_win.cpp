@@ -197,7 +197,11 @@ bool ManageAppLink(
 	}
 	const auto lnk = QString::fromWCharArray(startupFolder)
 		+ '\\'
+#if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+		+ u"Liquid Glass"_q
+#else
 		+ AppFile.utf16()
+#endif
 		+ u".lnk"_q;
 	if (!create) {
 		QFile::remove(lnk);
@@ -249,6 +253,8 @@ QString psAppDataPath() {
 		QDir appData(QString::fromStdWString(std::wstring(wstrPath)));
 #ifdef OS_WIN_STORE
 		return appData.absolutePath() + u"/Telegram Desktop UWP/"_q;
+#elif defined TDESKTOP_FORK_LIQUID_GLASS
+		return appData.absolutePath() + u"/Liquid Glass/"_q;
 #else // OS_WIN_STORE
 		return appData.absolutePath() + '/' + AppName.utf16() + '/';
 #endif // OS_WIN_STORE
@@ -289,6 +295,7 @@ int psCleanup() {
 }
 
 void psDoFixPrevious() {
+#if !defined TDESKTOP_FORK_LIQUID_GLASS || defined OS_WIN_STORE
 	try {
 		static const int bufSize = 4096;
 		DWORD checkType = 0;
@@ -340,6 +347,7 @@ void psDoFixPrevious() {
 		}
 	} catch (...) {
 	}
+#endif
 }
 
 int psFixPrevious() {

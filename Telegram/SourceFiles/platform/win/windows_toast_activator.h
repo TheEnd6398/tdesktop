@@ -12,8 +12,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/platform/win/wrl/wrl_implements_h.h"
 
+#if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+class DECLSPEC_UUID("8634941B-7290-4E86-9DD4-12E8DC2A5027") ToastActivator
+#else
 // {F11932D3-6110-4BBC-9B02-B2EC07A1BD19}
 class DECLSPEC_UUID("F11932D3-6110-4BBC-9B02-B2EC07A1BD19") ToastActivator
+#endif
 	: public ::Microsoft::WRL::RuntimeClass<
 		::Microsoft::WRL::RuntimeClassFlags<::Microsoft::WRL::ClassicCom>,
 		INotificationActivationCallback,
