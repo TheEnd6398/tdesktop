@@ -26,7 +26,8 @@ with zipfile.ZipFile(args.archive) as package:
     members = {item.filename.replace('\\', '/'): item for item in package.infolist()}
     root = 'LiquidGlass/'
     required = {'Telegram.exe', 'Start Liquid Glass.cmd', 'LICENSE', 'LEGAL',
-                'README.md', 'IMPLEMENTATION.md', 'imports.txt', 'modules/d3dcompiler_47.dll'}
+                'README.md', 'IMPLEMENTATION.md', 'imports.txt',
+                'modules/x64/d3d/d3dcompiler_47.dll'}
     missing = sorted(root + name for name in required if root + name not in members)
     assert not missing, f'Missing package files: {missing}; archive entries: {sorted(members)}'
     for name in members:
