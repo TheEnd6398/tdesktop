@@ -5065,6 +5065,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		&& !_giftToUser->isHidden();
 	const auto fieldWidth = size.width()
 		- 2 * margin
+		- (glass ? 2 * (st::glassGap + st::glassInset) : 0)
 		- (commentsShown
 			? (_commentsShown->width() + _st.commentsSkip)
 			: 0)
@@ -5112,7 +5113,9 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		}
 	}
 
-	const auto buttonsTop = size.height() - _st.attach.height - gap;
+	const auto buttonsTop = size.height() - _st.attach.height - gap
+		- (glass ? (_st.field.heightMin + _st.padding.top()
+			+ _st.padding.bottom() - _st.attach.height) / 2 : 0);
 
 	auto left = margin;
 	if (commentsShown) {
@@ -5138,6 +5141,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	}
 	const auto fieldHeight = composeFieldHeight();
 	const auto fieldTop = size.height() - _st.padding.bottom() - fieldHeight - gap;
+	left += glass ? st::glassGap + st::glassInset : 0;
 	_field->moveToLeft(left, fieldTop);
 	if (_richDraftPreview) {
 		_richDraftPreview->moveToLeft(left, fieldTop);

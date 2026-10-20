@@ -10,8 +10,10 @@ namespace {
 
 class Pattern final : public QWidget {
 public:
+	using QWidget::QWidget;
 	QRect painted;
 	bool capturing = false;
+	bool fill = true;
 
 private:
 	void paintEvent(QPaintEvent *event) override;
@@ -22,7 +24,9 @@ void Pattern::paintEvent(QPaintEvent *event) {
 	painted = event->rect();
 	capturing = Ui::Glass::CapturingBackdrop();
 	auto p = QPainter(this);
-	p.fillRect(event->rect(), Qt::red);
+	if (fill) {
+		p.fillRect(event->rect(), Qt::red);
+	}
 	p.fillRect(QRect(100, 4000, 20, 40), Qt::green);
 	p.fillRect(QRect(120, 4000, 20, 40), Qt::blue);
 }
@@ -70,6 +74,18 @@ int main(int argc, char **argv) {
 	Check(pattern.painted == QRect(100, 4000, 40, 40), "Backdrop rendered the full source widget.");
 	Check(pattern.capturing, "Widget paint did not identify the backdrop capture.");
 	Check(!Ui::Glass::CapturingBackdrop(), "Backdrop capture leaked into normal painting.");
+	auto transparent = Pattern(&root);
+	transparent.resize(640, 10000);
+	transparent.fill = false;
+	region.fill(Qt::transparent);
+	{
+		auto p = QPainter(&region);
+		Ui::Glass::RenderRegion(p, &transparent, QPoint(90, 4000), region.rect());
+	}
+	Check(qAlpha(region.pixel(0, 20)) == 0,
+		"A transparent content source was flattened to its window palette.");
+	Check(region.pixel(15, 20) == qRgb(0, 255, 0),
+		"Transparent content capture lost foreground messages.");
 	for (const auto dpr : { 1., 1.25, 1.5, 2., 3. }) {
 		for (const auto tint : { QColor(245, 245, 245), QColor(28, 30, 33) }) {
 			auto surface = Ui::Glass::Surface();

@@ -30,7 +30,7 @@ void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds) {
 	if (!region.isEmpty()) {
 		const auto guard = QScopedValueRollback(RenderDepth, RenderDepth + 1);
 		source->render(&p, region.topLeft() - offset, QRegion(region),
-			QWidget::DrawWindowBackground | QWidget::DrawChildren);
+			QWidget::DrawChildren);
 	}
 }
 

@@ -440,6 +440,18 @@ Widget::Widget(
 	Ui::SetupSmoothWheelScroll(_scroll.data());
 	_searchControls->paintRequest() | rpl::on_next([=] {
 		if (!Ui::Glass::Enabled()) {
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+			if (!_search->isHidden()) {
+				auto p = QPainter(_searchControls);
+				p.setRenderHint(QPainter::Antialiasing);
+				p.setPen(Qt::NoPen);
+				p.setBrush(_search->hasFocus()
+					? st::dialogsFilter.textBgActive
+					: st::dialogsFilter.textBg);
+				p.drawRoundedRect(_search->geometry(),
+					st::dialogsFilter.borderRadius, st::dialogsFilter.borderRadius);
+			}
+#endif
 			return;
 		}
 		auto p = QPainter(_searchControls);

@@ -7586,7 +7586,9 @@ void HistoryWidget::moveFieldControls() {
 // (_attachDocument|_attachPhoto) _field (_ttlInfo) (_scheduled) (_giftToUser) (_silent|_cmdStart|_kbShow) (_toggleSuggestPost) (_kbHide|_tabbedSelectorToggle) _send
 // (_botStart|_unblock|_joinChannel|_muteUnmute|_reportMessages)
 
-	auto buttonsBottom = bottom - _attachToggle->height();
+	auto buttonsBottom = bottom - _attachToggle->height()
+		- (glass ? (st::historyComposeField.heightMin
+			+ 2 * st::historySendPadding - _attachToggle->height()) / 2 : 0);
 	auto left = st::historySendRight + margin;
 	if (_botMenu) {
 		const auto skip = st::historyBotMenuSkip;
@@ -7603,6 +7605,7 @@ void HistoryWidget::moveFieldControls() {
 		left += _sendAs->width();
 	}
 	const auto fieldTop = bottom - fieldHeight() - st::historySendPadding;
+	left += glass ? st::glassGap + st::glassInset : 0;
 	_field->moveToLeft(left, fieldTop);
 	_richDraftPreview->moveToLeft(left, fieldTop);
 	if (_fieldDisabled) {
@@ -7679,6 +7682,7 @@ void HistoryWidget::updateFieldSize() {
 	const auto kbShowShown = _history && !_kbShown && _keyboard->hasMarkup();
 	auto fieldWidth = width()
 		- (Ui::Glass::Enabled() ? 2 * st::glassMargin : 0)
+		- (Ui::Glass::Enabled() ? 2 * (st::glassGap + st::glassInset) : 0)
 		- _attachToggle->width()
 		- st::historySendRight
 		- _send->width()
