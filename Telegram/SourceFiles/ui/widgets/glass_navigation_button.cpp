@@ -33,9 +33,7 @@ void NavigationButton::paintEvent(QPaintEvent *event) {
 		_hover.value(over ? 1. : 0.)));
 	paintRipple(p, 0, 0);
 	paintText(p, over, width());
-	if (maybeToggleRect()) {
-		paintToggle(p, width());
-	}
+	paintToggle(p, width());
 }
 
 void NavigationButton::onStateChanged(State was, StateChangeSource source) {
