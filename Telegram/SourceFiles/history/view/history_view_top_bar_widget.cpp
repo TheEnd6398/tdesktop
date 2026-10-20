@@ -599,7 +599,8 @@ void TopBarWidget::paintTopBar(Painter &p) {
 	auto namewidth = width()
 		- _rightTaken
 		- nameleft
-		- st::topBarNameRightPadding;
+		- st::topBarNameRightPadding
+		- (Ui::Glass::Enabled() ? st::glassGap : 0);
 	auto statuswidth = namewidth;
 
 	if (_chooseForReportReason) {
@@ -1185,7 +1186,9 @@ void TopBarWidget::updateInfoButtonVisibility() {
 	}
 	const auto shown = (communityChatsListBar() && !rootChatsListBar())
 		? communityUserpicShown()
-		: (_controller->adaptive().isOneColumn() || !_primaryWindow);
+		: (Ui::Glass::Enabled()
+			|| _controller->adaptive().isOneColumn()
+			|| !_primaryWindow);
 	_info->setVisible(!_chooseForReportReason && shown
 		&& (!Ui::Glass::Enabled() || width() >= st::glassCompactWidth));
 }

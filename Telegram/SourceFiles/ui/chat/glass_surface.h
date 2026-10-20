@@ -14,6 +14,8 @@ class SessionController;
 
 namespace style {
 struct InputField;
+struct SettingsButton;
+struct ScrollArea;
 } // namespace style
 
 namespace Ui {
@@ -30,12 +32,22 @@ void SetEnabled(bool enabled);
 [[nodiscard]] const style::InputField &FieldStyle(
 	const style::InputField &original,
 	rpl::lifetime &lifetime);
+[[nodiscard]] const style::SettingsButton &MenuButtonStyle(
+	const style::SettingsButton &original,
+	rpl::lifetime &lifetime);
+[[nodiscard]] const style::ScrollArea &TransparentScrollStyle(
+	const style::ScrollArea &original,
+	rpl::lifetime &lifetime);
 
 void PrepareChat(
 	Surface &surface,
 	not_null<QWidget*> widget,
 	not_null<Window::SessionController*> controller,
 	QRect bounds = {});
+void PrepareBackdrop(
+	Surface &surface,
+	not_null<QWidget*> target,
+	not_null<QWidget*> source);
 
 [[nodiscard]] std::unique_ptr<QObject> ObserveBackdrop(
 	not_null<RpWidget*> target,

@@ -11,6 +11,7 @@ namespace {
 class Pattern final : public QWidget {
 public:
 	QRect painted;
+	bool capturing = false;
 
 private:
 	void paintEvent(QPaintEvent *event) override;
@@ -19,6 +20,7 @@ private:
 
 void Pattern::paintEvent(QPaintEvent *event) {
 	painted = event->rect();
+	capturing = Ui::Glass::CapturingBackdrop();
 	auto p = QPainter(this);
 	p.fillRect(event->rect(), Qt::red);
 	p.fillRect(QRect(100, 4000, 20, 40), Qt::green);
@@ -48,6 +50,13 @@ QImage Paint(Ui::Glass::Surface &surface, qreal dpr, QColor tint) {
 int main(int argc, char **argv) {
 	qputenv("QT_QPA_PLATFORM", "offscreen");
 	auto app = QApplication(argc, argv);
+	auto root = QWidget();
+	auto left = QWidget(&root);
+	auto right = QWidget(&root);
+	left.move(30, 40);
+	right.move(100, 120);
+	Check(Ui::Glass::MapToWidget(&right, &left) == QPoint(70, 80),
+		"Sibling backdrop widgets mapped to the wrong origin.");
 	auto pattern = Pattern();
 	pattern.resize(640, 10000);
 	auto region = QImage(40, 40, QImage::Format_ARGB32_Premultiplied);
@@ -59,6 +68,8 @@ int main(int argc, char **argv) {
 	Check(region.pixel(5, 20) == qRgb(0, 255, 0), "Backdrop origin was shifted.");
 	Check(region.pixel(35, 20) == qRgb(0, 0, 255), "Backdrop crop was shifted.");
 	Check(pattern.painted == QRect(100, 4000, 40, 40), "Backdrop rendered the full source widget.");
+	Check(pattern.capturing, "Widget paint did not identify the backdrop capture.");
+	Check(!Ui::Glass::CapturingBackdrop(), "Backdrop capture leaked into normal painting.");
 	for (const auto dpr : { 1., 1.25, 1.5, 2., 3. }) {
 		for (const auto tint : { QColor(245, 245, 245), QColor(28, 30, 33) }) {
 			auto surface = Ui::Glass::Surface();

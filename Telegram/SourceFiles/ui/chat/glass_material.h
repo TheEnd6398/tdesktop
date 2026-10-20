@@ -8,6 +8,8 @@ class QWidget;
 
 namespace Ui::Glass {
 
+[[nodiscard]] QPoint MapToWidget(QWidget *from, QWidget *to);
+[[nodiscard]] bool CapturingBackdrop();
 void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds);
 void PaintHighlight(QPainter &p, QRect rect, int radius = 0);
 void PaintFocus(QPainter &p, QRect rect, QColor color, qreal opacity, int radius);

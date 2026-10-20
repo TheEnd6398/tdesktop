@@ -3,6 +3,7 @@
 #include "ui/chat/glass_blur.h"
 
 #include <QtCore/QHashFunctions>
+#include <QtCore/QScopedValueRollback>
 #include <QtGui/QPainterPath>
 #include <QtWidgets/QWidget>
 #include <algorithm>
@@ -10,10 +11,24 @@
 #include <cstring>
 
 namespace Ui::Glass {
+namespace {
+
+auto RenderDepth = 0;
+
+} // namespace
+
+bool CapturingBackdrop() {
+	return RenderDepth > 0;
+}
+
+QPoint MapToWidget(QWidget *from, QWidget *to) {
+	return to->mapFromGlobal(from->mapToGlobal(QPoint()));
+}
 
 void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds) {
 	const auto region = bounds.translated(offset).intersected(source->rect());
 	if (!region.isEmpty()) {
+		const auto guard = QScopedValueRollback(RenderDepth, RenderDepth + 1);
 		source->render(&p, region.topLeft() - offset, QRegion(region),
 			QWidget::DrawWindowBackground | QWidget::DrawChildren);
 	}

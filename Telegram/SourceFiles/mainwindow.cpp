@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "mainwindow.h"
 
+#include "ui/chat/glass_material.h"
+
 #include "data/data_document.h"
 #include "data/data_session.h"
 #include "data/data_document_media.h"
@@ -614,6 +616,9 @@ void MainWindow::checkActivation() {
 }
 
 bool MainWindow::contentOverlapped(const QRect &globalRect) {
+	if (Ui::Glass::CapturingBackdrop()) {
+		return false;
+	}
 	return (_main && _main->contentOverlapped(globalRect))
 		|| (_layer && _layer->contentOverlapped(globalRect));
 }

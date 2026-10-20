@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_list_widget.h"
 
+#include "ui/chat/glass_material.h"
+
 #include "history/view/history_view_about_view.h"
 #include "base/unixtime.h"
 #include "base/qt/qt_key_modifiers.h"
@@ -2975,17 +2977,18 @@ void ListWidget::checkActivation() {
 }
 
 void ListWidget::paintEvent(QPaintEvent *e) {
+	const auto capturing = Ui::Glass::CapturingBackdrop();
 	const auto overlapped = _delegate->listIgnorePaintEvent(this, e);
-	if (_readMetricsTracker) {
+	if (_readMetricsTracker && !capturing) {
 		_readMetricsTracker->setScreenActive(
 			!overlapped && markingContentsRead());
 	}
 	if (overlapped) {
 		return;
-	} else if (_translateTracker) {
+	} else if (_translateTracker && !capturing) {
 		_translateTracker->startBunch();
 	}
-	const auto metricsStale = _readMetricsTracker
+	const auto metricsStale = !capturing && _readMetricsTracker
 		&& base::take(_readMetricsStale);
 	if (metricsStale) {
 		_readMetricsTracker->startBatch(_visibleTop, _visibleBottom);
@@ -2998,6 +3001,10 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 	const auto markingContentRead = markingContentsRead();
 	const auto interactionsWindow = controllerOrNull();
 	const auto guard = gsl::finally([&] {
+		if (capturing) {
+			_userpicsCache.clear();
+			return;
+		}
 		if (_translateTracker) {
 			_delegate->listAddTranslatedItems(_translateTracker.get());
 			_translateTracker->finishBunch();
@@ -3075,7 +3082,7 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 		_delegate->listPaintEmpty(p, context);
 		return;
 	}
-	if (_reactionsManager) {
+	if (_reactionsManager && !capturing) {
 		_reactionsManager->startEffectsCollection();
 	}
 
@@ -3110,9 +3117,9 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 		const auto height = view->height();
 		if (!sendingAnimation
 			|| !sendingAnimation->hasAnimatedMessage(item)) {
-			if (_reactionsManager) {
+			if (_reactionsManager && !capturing) {
 				context.reactionInfo
-					= _reactionsManager->currentReactionPaintInfo();
+					= capturing ? nullptr : _reactionsManager->currentReactionPaintInfo();
 			}
 			context.outbg = view->hasOutLayout();
 			const auto selection = itemRenderSelection(view);
@@ -3122,70 +3129,72 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 			context.highlight = _highlighter.state(item);
 			view->draw(p, context);
 		}
-		if (_translateTracker) {
-			_translateTracker->add(view);
-		}
-		if (metricsStale && height > 0) {
-			_readMetricsTracker->push(item, top, height);
-		}
-		const auto isSponsored = item->isSponsored();
-		const auto isUnread = _delegate->listElementShownUnread(view)
-			&& item->isRegular();
-		const auto withReaction = context.reactionInfo
-			&& item->hasUnreadReaction();
-		const auto yShown = [&](int y) {
-			return (_visibleBottom >= y && _visibleTop <= y);
-		};
-		const auto markShown = (_context != Context::ChatPreview)
-			&& (isSponsored
-				? view->markSponsoredViewed(_visibleBottom - top)
-				: withReaction
-				? yShown(top + context.reactionInfo->position.y())
-				: isUnread
-				? yShown(top + height)
-				: yShown(top + height / 2));
-		if (markShown) {
-			if (isSponsored) {
-				session->sponsoredMessages().view(item->fullId());
-			} else if (isUnread) {
-				readTill = item;
+		if (!capturing) {
+			if (_translateTracker) {
+				_translateTracker->add(view);
 			}
-			if (markingContentRead
-				&& item->hasUnwatchedEffect()
-				&& _delegate->listAllowsReadEffect(view)) {
-				startEffects.emplace(view);
+			if (metricsStale && height > 0) {
+				_readMetricsTracker->push(item, top, height);
 			}
-			if (markingContentRead
-				&& interactionsWindow
-				&& !item->out()
-				&& !_animatedStickersPlayed.contains(item)
-				&& !PowerSaving::On(PowerSaving::kEmojiChat)
-				&& CanPlayEmojiInteraction(view)
-				&& session->emojiStickersPack().hasAnimationsFor(item)) {
-				startInteractions.emplace(view);
+			const auto isSponsored = item->isSponsored();
+			const auto isUnread = _delegate->listElementShownUnread(view)
+				&& item->isRegular();
+			const auto withReaction = context.reactionInfo
+				&& item->hasUnreadReaction();
+			const auto yShown = [&](int y) {
+				return (_visibleBottom >= y && _visibleTop <= y);
+			};
+			const auto markShown = (_context != Context::ChatPreview)
+				&& (isSponsored
+					? view->markSponsoredViewed(_visibleBottom - top)
+					: withReaction
+					? yShown(top + context.reactionInfo->position.y())
+					: isUnread
+					? yShown(top + height)
+					: yShown(top + height / 2));
+			if (markShown) {
+				if (isSponsored) {
+					session->sponsoredMessages().view(item->fullId());
+				} else if (isUnread) {
+					readTill = item;
+				}
+				if (markingContentRead
+					&& item->hasUnwatchedEffect()
+					&& _delegate->listAllowsReadEffect(view)) {
+					startEffects.emplace(view);
+				}
+				if (markingContentRead
+					&& interactionsWindow
+					&& !item->out()
+					&& !_animatedStickersPlayed.contains(item)
+					&& !PowerSaving::On(PowerSaving::kEmojiChat)
+					&& CanPlayEmojiInteraction(view)
+					&& session->emojiStickersPack().hasAnimationsFor(item)) {
+					startInteractions.emplace(view);
+				}
+				if (markingAsViewed && item->hasViews()) {
+					session->api().views().scheduleIncrement(item);
+				}
+				if (withReaction) {
+					readContents.insert(item);
+				} else if (item->isUnreadMention()
+					&& !item->isUnreadMedia()) {
+					readContents.insert(item);
+					_highlighter.enqueue({ item });
+				}
+				if (item->hasUnreadPollVote()) {
+					readContents.insert(item);
+				}
 			}
-			if (markingAsViewed && item->hasViews()) {
-				session->api().views().scheduleIncrement(item);
+			session->data().reactions().poll(item, context.now);
+			if (item->hasUnpaidContent()) {
+				session->api().views().pollExtendedMedia(item);
 			}
-			if (withReaction) {
-				readContents.insert(item);
-			} else if (item->isUnreadMention()
-				&& !item->isUnreadMedia()) {
-				readContents.insert(item);
-				_highlighter.enqueue({ item });
+			if (_reactionsManager) {
+				_reactionsManager->recordCurrentReactionEffect(
+					item->fullId(),
+					QPoint(0, top));
 			}
-			if (item->hasUnreadPollVote()) {
-				readContents.insert(item);
-			}
-		}
-		session->data().reactions().poll(item, context.now);
-		if (item->hasUnpaidContent()) {
-			session->api().views().pollExtendedMedia(item);
-		}
-		if (_reactionsManager) {
-			_reactionsManager->recordCurrentReactionEffect(
-				item->fullId(),
-				QPoint(0, top));
 		}
 		top += height;
 		context.translate(0, -height);
@@ -3201,7 +3210,7 @@ void ListWidget::paintEvent(QPaintEvent *e) {
 	if (_replyButtonManager) {
 		_replyButtonManager->paint(p, context);
 	}
-	if (_reactionsManager) {
+	if (_reactionsManager && !capturing) {
 		_reactionsManager->paint(p, context);
 	}
 }
