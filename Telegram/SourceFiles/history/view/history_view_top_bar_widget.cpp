@@ -142,6 +142,11 @@ TopBarWidget::TopBarWidget(
 		update();
 	}, lifetime());
 	PowerSaving::Changes() | rpl::on_next([=] { update(); }, lifetime());
+	for (const auto button : { _back.data(), _cancelChoose.data(),
+		_call.data(), _groupCall.data(), _search.data(),
+		_infoToggle.data(), _menuToggle.data() }) {
+		Ui::Glass::BindButtonFeedback(button);
+	}
 
 	_clear->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
 	_forward->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);

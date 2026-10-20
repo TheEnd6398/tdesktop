@@ -668,7 +668,8 @@ private:
 		Painter &p,
 		const QRect &rect,
 		int left,
-		int top) const;
+		int top,
+		int outerWidth) const;
 	bool paintShowAnimationFrame();
 
 	void updateMouseTracking();
@@ -721,6 +722,7 @@ private:
 		TextUpdateEvents events = 0,
 		FieldHistoryAction fieldHistoryAction = FieldHistoryAction::Clear);
 	[[nodiscard]] int fieldHeight() const;
+	[[nodiscard]] QRect fieldHeaderRect() const;
 	[[nodiscard]] bool fieldOrDisabledShown() const;
 	[[nodiscard]] bool fieldHasSendText() const;
 	[[nodiscard]] bool hasSendableContent() const;

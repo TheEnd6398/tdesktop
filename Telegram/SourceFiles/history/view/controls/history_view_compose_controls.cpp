@@ -1452,6 +1452,12 @@ ComposeControls::ComposeControls(
 			updateControlsGeometry(_wrap->size());
 		}
 	}, _sessionLifetime);
+	if (!_backgroundRect) {
+		if (_attachToggle) {
+			Ui::Glass::BindButtonFeedback(_attachToggle);
+		}
+		Ui::Glass::BindButtonFeedback(_tabbedSelectorToggle);
+	}
 	_field->focusedChanges() | rpl::on_next([=](bool focused) {
 		if (Ui::Glass::Enabled()) {
 			if (anim::Disabled()) {
@@ -5154,7 +5160,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	_header->resizeToWidth(size.width() - 2 * margin);
 	_header->moveToLeft(
 		margin,
-		fieldTop - _st.padding.top() - _header->height());
+		fieldTop - _st.padding.top() - _header->height() - gap);
 
 	auto right = margin;
 	if (_starsReaction) {
@@ -5754,11 +5760,13 @@ void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
 			Ui::Glass::PrepareChat(_glass, _wrap.get(), _regularWindow);
 		}
 		const auto field = _field->geometry();
-		const auto area = _header->isDisplayed()
-			? full.marginsRemoved(QMargins(st::glassMargin,
-				st::glassGap, st::glassMargin, st::glassGap))
-			: QRect(field.x() - st::glassInset, st::glassGap,
-				field.width() + 2 * st::glassInset, full.height() - 2 * st::glassGap);
+		const auto area = QRect(field.x() - st::glassInset,
+			field.y() - _st.padding.top(),
+			field.width() + 2 * st::glassInset,
+			composeFieldHeight() + _st.padding.top() + _st.padding.bottom());
+		if (_header->isDisplayed()) {
+			_glass.paint(p, _header->geometry(), _st.bg->c, st::glassRowRadius);
+		}
 		_glass.paint(p, area,
 			_st.bg->c, st::glassComposerRadius);
 		Ui::Glass::PaintFocus(p, area, st::windowActiveTextFg->c,
@@ -5894,7 +5902,10 @@ int ComposeControls::composeFieldHeight() const {
 }
 
 void ComposeControls::updateHeight() {
-	const auto height = (_header->isDisplayed() ? _header->height() : 0)
+	const auto glass = Ui::Glass::Enabled() && !_backgroundRect;
+	const auto height = (_header->isDisplayed()
+		? _header->height() + (glass ? st::glassGap : 0)
+		: 0)
 		+ ((Ui::Glass::Enabled() && !_backgroundRect) ? 2 * st::glassGap : 0)
 		+ _st.padding.top()
 		+ composeFieldHeight()

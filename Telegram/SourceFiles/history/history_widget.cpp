@@ -1236,6 +1236,8 @@ HistoryWidget::HistoryWidget(
 	}, lifetime());
 
 	_attachToggle->setAccessibleName(tr::lng_attach(tr::now));
+	Ui::Glass::BindButtonFeedback(_attachToggle.data());
+	Ui::Glass::BindButtonFeedback(_tabbedSelectorToggle.data());
 	_tabbedSelectorToggle->setAccessibleName(tr::lng_emoji_sticker_gif(tr::now));
 	_botKeyboardShow->setAccessibleName(tr::lng_bot_keyboard_show(tr::now));
 	_botKeyboardHide->setAccessibleName(tr::lng_bot_keyboard_hide(tr::now));
@@ -6564,11 +6566,9 @@ void HistoryWidget::mouseMoveEvent(QMouseEvent *e) {
 
 void HistoryWidget::updateOverStates(QPoint pos) {
 	const auto isReadyToForward = readyToForward();
-	const auto detailsRect = QRect(
-		0,
-		_field->y() - st::historySendPadding - st::historyReplyHeight,
-		width() - _fieldBarCancel->width(),
-		st::historyReplyHeight);
+	const auto header = fieldHeaderRect();
+	const auto detailsRect = myrtlrect(header.x(), header.y(),
+		header.width() - _fieldBarCancel->width(), header.height());
 	const auto hasWebPage = !!_previewDrawPreview;
 	const auto inDetails = detailsRect.contains(pos)
 		&& (_editMsgId
@@ -6578,10 +6578,10 @@ void HistoryWidget::updateOverStates(QPoint pos) {
 			|| _suggestOptions);
 	const auto inPhotoEdit = inDetails
 		&& _photoEditMedia
-		&& QRect(
-			detailsRect.x() + st::historyReplySkip,
-			(detailsRect.y()
-				+ (detailsRect.height() - st::historyReplyPreview) / 2),
+		&& myrtlrect(
+			header.x() + st::historyReplySkip,
+			(header.y()
+				+ (header.height() - st::historyReplyPreview) / 2),
 			st::historyReplyPreview,
 			st::historyReplyPreview).contains(pos);
 	const auto inClickable = inDetails;
@@ -7393,6 +7393,17 @@ int HistoryWidget::fieldHeight() const {
 		: (st::historySendSize.height() - 2 * st::historySendPadding);
 }
 
+QRect HistoryWidget::fieldHeaderRect() const {
+	const auto glass = Ui::Glass::Enabled();
+	const auto margin = glass ? st::glassMargin : 0;
+	return QRect(
+		margin,
+		_field->y() - st::historySendPadding - st::historyReplyHeight
+			- (glass ? st::glassGap : 0),
+		width() - 2 * margin,
+		st::historyReplyHeight);
+}
+
 bool HistoryWidget::fieldOrDisabledShown() const {
 	return !_field->isHidden() || !_richDraftPreview->isHidden() || _fieldDisabled;
 }
@@ -7649,8 +7660,8 @@ void HistoryWidget::moveFieldControls() {
 	updateDiscardRichDraftGeometry();
 
 	_fieldBarCancel->moveToRight(
-		0,
-		_field->y() - st::historySendPadding - _fieldBarCancel->height());
+		margin,
+		fieldHeaderRect().top());
 	if (_inlineResults) {
 		_inlineResults->moveBottom(_field->y() - st::historySendPadding);
 	}
@@ -8656,6 +8667,9 @@ void HistoryWidget::updateHistoryGeometry(
 			|| _previewDrawPreview
 			|| _suggestOptions) {
 			newScrollHeight -= st::historyReplyHeight;
+			if (Ui::Glass::Enabled()) {
+				newScrollHeight -= st::glassGap;
+			}
 		}
 		if (_kbShown) {
 			newScrollHeight -= _kbScroll->height();
@@ -11319,18 +11333,25 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		|| _suggestOptions) {
 		backy -= st::historyReplyHeight;
 		backh += st::historyReplyHeight;
+		if (Ui::Glass::Enabled()) {
+			backy -= st::glassGap;
+			backh += st::glassGap;
+		}
 	}
 	p.setInactive(
 		controller()->isGifPausedAtLeastFor(Window::GifPauseReason::Any));
 	if (Ui::Glass::Enabled()) {
 		Ui::Glass::PrepareChat(_glassComposer, this, controller(),
 			QRect(0, backy, width(), backh));
-		const auto preview = backh > fieldHeight() + 2 * st::historySendPadding;
 		const auto field = _field->geometry();
-		const auto full = preview
-			? QRect(st::glassMargin, backy, width() - 2 * st::glassMargin, backh)
-			: QRect(field.x() - st::glassInset, backy,
-				field.width() + 2 * st::glassInset, backh);
+		const auto inputHeight = fieldHeight() + 2 * st::historySendPadding;
+		const auto full = QRect(field.x() - st::glassInset,
+			field.y() - st::historySendPadding,
+			field.width() + 2 * st::glassInset, inputHeight);
+		if (backh > inputHeight) {
+			_glassComposer.paint(p, fieldHeaderRect(), st::historyReplyBg->c,
+				st::glassRowRadius);
+		}
 		_glassComposer.paint(p, full, st::historyReplyBg->c,
 			st::glassComposerRadius);
 		Ui::Glass::PaintFocus(p, full, st::windowActiveTextFg->c,
@@ -11347,6 +11368,10 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		p.fillRect(myrtlrect(0, backy, width(), backh), st::historyReplyBg);
 	}
 
+	const auto margin = Ui::Glass::Enabled() ? st::glassMargin : 0;
+	const auto contentWidth = width() - 2 * margin;
+	p.save();
+	p.translate(margin, 0);
 	const auto media = (!_previewDrawPreview && drawMsgText)
 		? drawMsgText->media()
 		: nullptr;
@@ -11385,20 +11410,21 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		st::historyLinkIcon.paint(
 			p,
 			st::historyReplyIconPosition + QPoint(0, backy),
-			width());
+			contentWidth);
 		const auto textTop = backy + st::msgReplyPadding.top();
 		auto previewLeft = st::historyReplySkip;
 
-		const auto to = QRect(
+		const auto to = rtlrect(
 			previewLeft,
 			backy + (st::historyReplyHeight - st::historyReplyPreview) / 2,
 			st::historyReplyPreview,
-			st::historyReplyPreview);
+			st::historyReplyPreview,
+			contentWidth);
 		if (_previewDrawPreview(p, to)) {
 			previewLeft += st::historyReplyPreview + st::msgReplyBarSkip;
 		}
 		p.setPen(st::historyReplyNameFg);
-		const auto elidedWidth = width()
+		const auto elidedWidth = contentWidth
 			- previewLeft
 			- _fieldBarCancel->width()
 			- st::msgReplyPadding.right();
@@ -11420,7 +11446,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		const auto pausedSpoiler = paused || On(PowerSaving::kChatSpoiler);
 		auto replyLeft = st::historyReplySkip;
 		if (_suggestOptions) {
-			_suggestOptions->paintIcon(p, 0, backy, width());
+			_suggestOptions->paintIcon(p, 0, backy, contentWidth);
 		} else {
 			(_editMsgId
 				? st::historyEditIcon
@@ -11429,7 +11455,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 				: st::historyReplyIcon).paint(
 					p,
 					st::historyReplyIconPosition + QPoint(0, backy),
-					width());
+					contentWidth);
 		}
 		if (drawMsgText) {
 			if (hasPreview) {
@@ -11437,12 +11463,13 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 					const auto overEdit = _photoEditMedia
 						? _inPhotoEditOver.value(_inPhotoEdit ? 1. : 0.)
 						: 0.;
-					auto to = QRect(
+					auto to = rtlrect(
 						replyLeft,
 						(st::historyReplyHeight - st::historyReplyPreview) / 2
 							+ backy,
 						st::historyReplyPreview,
-						st::historyReplyPreview);
+						st::historyReplyPreview,
+						contentWidth);
 					p.drawPixmap(to.x(), to.y(), preview->pixSingle(
 						preview->size() / style::DevicePixelRatio(),
 						{
@@ -11470,17 +11497,18 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 				replyLeft += st::historyReplyPreview + st::msgReplyBarSkip;
 			}
 			if (_suggestOptions) {
-				_suggestOptions->paintLines(p, replyLeft, backy, width());
+				_suggestOptions->paintLines(p, replyLeft, backy, contentWidth);
 			} else {
 				p.setPen(st::historyReplyNameFg);
 				if (_editMsgId) {
-					paintEditHeader(p, rect, replyLeft, backy);
+					paintEditHeader(p, rect.translated(-margin, 0),
+						replyLeft, backy, contentWidth);
 				} else {
 					_replyToName.drawElided(
 						p,
 						replyLeft,
 						backy + st::msgReplyPadding.top(),
-						width()
+						contentWidth
 							- replyLeft
 							- _fieldBarCancel->width()
 							- st::msgReplyPadding.right());
@@ -11492,7 +11520,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 						st::msgReplyPadding.top()
 							+ st::msgServiceNameFont->height
 							+ backy),
-					.availableWidth = width()
+					.availableWidth = contentWidth
 						- replyLeft
 						- _fieldBarCancel->width()
 						- st::msgReplyPadding.right(),
@@ -11514,7 +11542,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 					+ st::msgDateFont->ascent,
 				st::msgDateFont->elided(
 					tr::lng_profile_loading(tr::now),
-					width()
+					contentWidth
 						- replyLeft
 						- _fieldBarCancel->width()
 						- st::msgReplyPadding.right()));
@@ -11522,25 +11550,28 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 	} else if (hasForward) {
 		st::historyForwardIcon.paint(
 			p,
-			st::historyReplyIconPosition + QPoint(0, backy), width());
+			st::historyReplyIconPosition + QPoint(0, backy), contentWidth);
 		const auto x = st::historyReplySkip;
-		const auto available = width()
+		const auto available = contentWidth
 			- x
 			- _fieldBarCancel->width()
 			- st::msgReplyPadding.right();
-		_forwardPanel->paint(p, x, backy, available, width());
+		_forwardPanel->paint(p, x, backy, available, contentWidth);
 	} else if (_suggestOptions) {
-		_suggestOptions->paintBar(p, 0, backy, width());
+		_suggestOptions->paintBar(p, 0, backy, contentWidth);
 	}
+	p.restore();
 }
 
 void HistoryWidget::paintEditHeader(
 		Painter &p,
 		const QRect &rect,
 		int left,
-		int top) const {
+		int top,
+		int outerWidth) const {
 	if (!rect.intersects(
-			myrtlrect(left, top, width() - left, st::normalFont->height))) {
+			rtlrect(left, top, outerWidth - left, st::normalFont->height,
+				outerWidth))) {
 		return;
 	}
 
@@ -11548,7 +11579,7 @@ void HistoryWidget::paintEditHeader(
 	p.drawTextLeft(
 		left,
 		top + st::msgReplyPadding.top(),
-		width(),
+		outerWidth,
 		tr::lng_edit_message(tr::now));
 
 	if (!_replyEditMsg
@@ -11583,7 +11614,8 @@ void HistoryWidget::paintEditHeader(
 
 	// Restart timer only if we are sure that we've painted the whole timer.
 	if (rect.contains(
-			myrtlrect(left, top, width() - left, st::normalFont->height))
+			rtlrect(left, top, outerWidth - left, st::normalFont->height,
+				outerWidth))
 		&& (updateIn > 0)) {
 		_updateEditTimeLeftDisplay.callOnce(updateIn);
 	}
