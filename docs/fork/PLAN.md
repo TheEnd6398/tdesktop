@@ -6,28 +6,25 @@ committed before production or workflow implementation. Work on
 
 ## Sequence and acceptance gates
 
-1. Add a Windows x64 artifact workflow with credential preflight, updater
-   isolation, reproducible dependency preparation and a portable launcher.
-   Push and inspect the actual workflow. A missing secret, blocked workflow
-   permission or runner limit stops implementation and requires a precise
-   report to the user. Do not invent secrets or use public Telegram API keys.
-2. Add independently controlled fork effects and translated settings. Verify
-   old Power Saving settings and automatic battery fallback before drawing
-   glass or changing geometry.
-3. Add the reusable opt-in wheel helper and exercise cancellation/range
-   behavior, then adopt it in settings, dialogs and both history screens.
-4. Introduce explicit chat content insets and regression checks, initially
-   with unchanged opaque bars. Verify both list implementations and all
-   section containers before enabling underlap.
-5. Add strip capture, cache invalidation and CPU glass rendering behind the
-   existing opaque shapes. Validate moving content and performance.
-6. Convert header, pinned bar, both composers and corner overlays to capsule
-   geometry while retaining original controls. Add main-menu glass with a
-   content-only backdrop capture.
-7. Run Windows compilation and functional checks after each pushed logical
-   change, resolve failures, then review the combined diff and open the PR.
-   Report build/run/artifact links and any unrun interaction/performance
-   checks. A successful compiler run alone does not prove scroll correctness.
+The complete-redesign request supersedes the earlier dependency-first order.
+The Windows baseline has passed; subsequent artifacts must include visible UI
+changes. The fork option now defaults ON and the Windows workflow explicitly
+enables it.
+
+1. Implement the active chat header, both composers, pinned bars and corner
+   controls with shared materials and translated effect settings. Keep the
+   current reading viewport and its existing anchoring contract while exposing
+   wallpaper between the floating controls.
+2. Validate bounded capture, blur, light/dark materials, DPI and fallback
+   behavior locally. Compile and package the changed Windows application.
+   Runtime screenshots and interactions require a Windows GUI with an account;
+   component raster checks do not establish that evidence.
+3. Extend the material to chat lists, navigation, profiles, settings and menus
+   after the first chat milestone. Add subtle motion and wheel smoothing using
+   the actual ScrollArea and ElasticScroll contracts.
+4. Stabilize theme changes, live toggles, narrow layouts and account switches.
+   Update the existing PR and report each implemented, compiled and visually
+   verified feature separately.
 
 The user explicitly requests a Release distribution build in GitHub Actions.
 Use that there, while local development checks remain Debug; do not run a
@@ -40,7 +37,7 @@ inside the tdesktop checkout. No submodule edit or repin is planned.
 
 | Area | Files/classes | Intended responsibility |
 | --- | --- | --- |
-| Build isolation | `Telegram/cmake/telegram_options.cmake`, `Telegram/CMakeLists.txt` | Default-off fork build option; explicit registration and compile gating of new sources |
+| Build isolation | `Telegram/cmake/telegram_options.cmake`, `Telegram/CMakeLists.txt` | Default-on fork build option; explicit registration and compile gating of new sources |
 | Windows artifact | `.github/workflows/fork-win-x64.yml`, `Telegram/build/fork/` helper scripts, `docs/fork/BUILDING.md` | Secrets preflight, staged dependency cache, Release build and side-by-side portable package |
 | Runtime switches | New `Telegram/SourceFiles/ui/fork_effects.h/.cpp`, `ui/power_saving.h`, `settings/settings_power_saving.cpp`, `settings/sections/settings_advanced.cpp`, `Telegram/Resources/langs/lang.strings` | Query effects, persist layout preference, expose localized settings and live changes |
 | Style constants | New `Telegram/SourceFiles/ui/chat/fork_glass.style`, `Telegram/cmake/td_ui.cmake` | Scaled spacing, capture scale, surface treatment and action sizes through style code generation |
@@ -65,8 +62,8 @@ manual fork.
 
 ## Build and runtime gating
 
-Add a default-off CMake option, `TDESKTOP_FORK_LIQUID_GLASS`. The new workflow
-enables it. Existing platform builds keep their present behavior. Product
+Use the default-on CMake option, `TDESKTOP_FORK_LIQUID_GLASS`. The new workflow
+enables it. Builds may explicitly disable the option to retain their original interface. Product
 helpers may be platform-generic; Windows-only defaults/integration use the
 repository's established platform guards. Do not equate the project's CMake
 `LINUX` with only the Linux kernel platform.

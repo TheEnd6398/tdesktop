@@ -145,6 +145,12 @@ PinnedWidget::PinnedWidget(
 
 	_topBar->move(0, 0);
 	_topBar->resizeToWidth(width());
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		InvokeQueued(this, [=] {
+			updateControlsGeometry();
+			update();
+		});
+	}, lifetime());
 	_topBar->show();
 	_topBar->setCustomTitle(tr::lng_contacts_loading(tr::now));
 
@@ -520,7 +526,7 @@ void PinnedWidget::updateControlsGeometry() {
 		? std::nullopt
 		: base::make_optional(_scroll->scrollTop() + takeTopDelta());
 	_topBar->resizeToWidth(contentWidth);
-	_topBarShadow->resize(contentWidth, st::lineWidth);
+	_topBarShadow->resize(contentWidth, Ui::Glass::Enabled() ? 0 : st::lineWidth);
 
 	const auto bottom = height() - _clearButton->height();
 	_clearButton->resizeToWidth(width());

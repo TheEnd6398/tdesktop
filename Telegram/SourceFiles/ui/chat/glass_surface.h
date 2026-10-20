@@ -1,7 +1,12 @@
 #pragma once
 
-#include <QtGui/QImage>
-#include <QtGui/QPainter>
+#include "ui/chat/glass_material.h"
+#include "base/basic_types.h"
+#include <rpl/producer.h>
+#include <rpl/lifetime.h>
+#include <memory>
+
+class QObject;
 
 namespace Window {
 class SessionController;
@@ -10,6 +15,10 @@ class SessionController;
 namespace style {
 struct InputField;
 } // namespace style
+
+namespace Ui {
+class RpWidget;
+} // namespace Ui
 
 namespace Ui::Glass {
 
@@ -22,25 +31,15 @@ void SetEnabled(bool enabled);
 	const style::InputField &original,
 	rpl::lifetime &lifetime);
 
-class Surface final {
-public:
-	using Source = Fn<void(QPainter &p, QRect clip)>;
-
-	void prepare(QRect bounds, qreal dpr, const Source &source);
-	void paint(QPainter &p, QRect rect, QColor tint, int radius = 0) const;
-	void clear();
-
-private:
-	QImage _image;
-	QImage _scratch;
-	QRect _bounds;
-
-};
-
 void PrepareChat(
 	Surface &surface,
 	not_null<QWidget*> widget,
 	not_null<Window::SessionController*> controller,
 	QRect bounds = {});
+
+[[nodiscard]] std::unique_ptr<QObject> ObserveBackdrop(
+	not_null<RpWidget*> target,
+	not_null<QWidget*> source,
+	not_null<Surface*> surface);
 
 } // namespace Ui::Glass

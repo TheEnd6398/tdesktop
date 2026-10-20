@@ -4,6 +4,6 @@
 
 namespace Ui::Glass {
 
-void Blur(QImage &image, QImage &scratch);
+void Blur(QImage &image, QImage &scratch, int radius = 3);
 
 } // namespace Ui::Glass

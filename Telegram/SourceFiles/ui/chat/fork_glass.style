@@ -5,3 +5,5 @@ glassGap: 8px;
 glassInset: 5px;
 glassShadow: 4px;
 glassComposerRadius: 24px;
+glassCompactWidth: 420px;
+glassBlurSupport: 36px;

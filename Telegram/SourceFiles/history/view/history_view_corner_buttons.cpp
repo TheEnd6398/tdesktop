@@ -185,6 +185,7 @@ CornerButtons::CornerButtons(
 	[=](QEvent *e) { return parent->viewportEvent(e); },
 	st,
 	delegate) {
+	_backdropSource = [=] { return parent->viewport(); };
 }
 
 CornerButtons::CornerButtons(
@@ -196,6 +197,15 @@ CornerButtons::CornerButtons(
 	[=](QEvent *e) { return parent->viewportEvent(e); },
 	st,
 	delegate) {
+	_backdropSource = [=] { return parent->viewport(); };
+}
+
+void CornerButtons::setupGlassBackdrop(not_null<QWidget*> viewport) {
+	for (const auto button : {
+		_down.widget.data(), _mentions.widget.data(), _reactions.widget.data(),
+		_pollVotes.widget.data(), _stash.widget.data() }) {
+		button->setBackdropSource(viewport);
+	}
 }
 
 CornerButtons::CornerButtons(
@@ -526,6 +536,13 @@ void CornerButtons::updateJumpDownVisibility(std::optional<int> counter) {
 }
 
 void CornerButtons::updatePositions() {
+	if (_backdropSource) {
+		const auto source = _backdropSource();
+		if (source && source != _glassSource) {
+			_glassSource = source;
+			setupGlassBackdrop(source);
+		}
+	}
 	const auto checkVisibility = [](CornerButton &button) {
 		const auto shouldBeHidden = !button.shown
 			&& !button.animation.animating();

@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/controls/history_view_voice_record_bar.h"
 
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
+
 #include "api/api_send_progress.h"
 #include "base/event_filter.h"
 #include "base/random.h"
@@ -2273,6 +2276,10 @@ void VoiceRecordBar::init() {
 		}
 		if (_backgroundRect) {
 			_backgroundRect->paint(p, rect());
+		} else if (Ui::Glass::Enabled()) {
+			Ui::Glass::Surface().paint(p,
+				rect().marginsRemoved(QMargins(st::glassMargin, 0, st::glassMargin, 0)),
+				_st.bg->c, st::glassComposerRadius);
 		} else {
 			p.fillRect(clip, _st.bg);
 		}

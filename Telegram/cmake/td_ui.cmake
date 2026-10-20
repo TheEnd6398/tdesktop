@@ -486,6 +486,8 @@ PRIVATE
     ui/chat/pinned_bar.cpp
     ui/chat/glass_surface.cpp
     ui/chat/glass_surface.h
+    ui/chat/glass_material.cpp
+    ui/chat/glass_material.h
     ui/chat/glass_blur.cpp
     ui/chat/glass_blur.h
     ui/chat/pinned_bar.h

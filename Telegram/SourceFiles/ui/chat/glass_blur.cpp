@@ -4,7 +4,7 @@
 
 namespace Ui::Glass {
 
-void Blur(QImage &image, QImage &scratch) {
+void Blur(QImage &image, QImage &scratch, int radius) {
 	if (image.isNull()) {
 		return;
 	}
@@ -12,8 +12,9 @@ void Blur(QImage &image, QImage &scratch) {
 		|| scratch.format() != image.format()) {
 		scratch = QImage(image.size(), image.format());
 	}
-	constexpr auto radius = 3;
-	constexpr auto samples = radius * 2 + 1;
+	Q_ASSERT(image.format() == QImage::Format_ARGB32_Premultiplied);
+	Q_ASSERT(radius >= 0);
+	const auto samples = radius * 2 + 1;
 	const auto width = image.width();
 	const auto height = image.height();
 	for (auto pass = 0; pass != 3; ++pass) {

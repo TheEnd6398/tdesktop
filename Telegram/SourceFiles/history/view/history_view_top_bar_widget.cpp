@@ -74,6 +74,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_fork_glass.h"
 
 #include <QtGui/QWindow>
+#include <QtGui/QPainterPath>
 
 namespace HistoryView {
 namespace {
@@ -872,12 +873,23 @@ QRect TopBarWidget::getMembersShowAreaGeometry() const {
 	int membersTextWidth = _titlePeerText.maxWidth();
 	int membersTextHeight = st::topBarHeight - membersTextTop;
 
-	return myrtlrect(membersTextLeft, membersTextTop, membersTextWidth, membersTextHeight);
+	return myrtlrect(membersTextLeft,
+		membersTextTop + (Ui::Glass::Enabled() ? st::glassGap : 0),
+		membersTextWidth, membersTextHeight);
 }
 
 void TopBarWidget::mousePressEvent(QMouseEvent *e) {
+	if (Ui::Glass::Enabled() && !_animatingMode) {
+		auto title = QPainterPath();
+		const auto rect = QRectF(glassTitleRect());
+		title.addRoundedRect(rect, rect.height() / 2., rect.height() / 2.);
+		if (!title.contains(e->position())) {
+			return;
+		}
+	}
 	const auto handleClick = (e->button() == Qt::LeftButton)
-		&& (e->pos().y() < st::topBarHeight)
+		&& (e->pos().y() < st::topBarHeight
+			+ (Ui::Glass::Enabled() ? st::glassGap : 0))
 		&& !showSelectedState()
 		&& !_chooseForReportReason;
 	if (handleClick) {
@@ -1146,6 +1158,7 @@ void TopBarWidget::refreshInfoButton() {
 
 void TopBarWidget::resizeEvent(QResizeEvent *e) {
 	updateSearchVisibility();
+	updateInfoButtonVisibility();
 	updateControlsGeometry();
 }
 
@@ -1173,7 +1186,8 @@ void TopBarWidget::updateInfoButtonVisibility() {
 	const auto shown = (communityChatsListBar() && !rootChatsListBar())
 		? communityUserpicShown()
 		: (_controller->adaptive().isOneColumn() || !_primaryWindow);
-	_info->setVisible(!_chooseForReportReason && shown);
+	_info->setVisible(!_chooseForReportReason && shown
+		&& (!Ui::Glass::Enabled() || width() >= st::glassCompactWidth));
 }
 
 void TopBarWidget::updateControlsGeometry() {
@@ -1273,6 +1287,9 @@ void TopBarWidget::updateControlsGeometry() {
 		_back->moveToLeft(_leftTaken, backButtonTop);
 		_leftTaken += _back->width();
 		_leftTaken += gap;
+		if (glass && (!_info || _info->isHidden())) {
+			_leftTaken += st::glassMargin;
+		}
 	}
 	if (_info && !_info->isHidden()) {
 		if (_back->isHidden() && _narrowRatio > 0.) {
@@ -1356,6 +1373,15 @@ void TopBarWidget::updateControlsGeometry() {
 	}
 
 	updateMembersShowArea();
+	for (const auto button : { _back.data(), _cancelChoose.data(),
+		_call.data(), _groupCall.data(), _search.data(),
+		_infoToggle.data(), _menuToggle.data() }) {
+		if (glass) {
+			button->setMask(QRegion(Ui::Glass::ButtonRect(button->rect()), QRegion::Ellipse));
+		} else {
+			button->clearMask();
+		}
+	}
 }
 
 void TopBarWidget::finishAnimating() {

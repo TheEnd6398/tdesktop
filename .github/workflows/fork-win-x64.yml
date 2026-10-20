@@ -38,9 +38,25 @@ jobs:
           done
           exit "$missing"
 
+  effects:
+    name: Check glass rendering
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Qt for focused rendering checks
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qt6-base-dev ninja-build
+      - name: Build and test glass rendering in Debug
+        run: |
+          cmake -S Telegram/SourceFiles/tests/fork_glass -B out/glass-checks -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build out/glass-checks --parallel 4
+          ctest --test-dir out/glass-checks --output-on-failure
+
   dependencies:
     name: Prepare x64 Release libraries
-    needs: credentials
+    needs: [credentials, effects]
     runs-on: windows-latest
     timeout-minutes: 350
     outputs:

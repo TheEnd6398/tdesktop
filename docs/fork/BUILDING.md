@@ -1,9 +1,32 @@
 # Fork Windows x64 builds
 
 The `Fork Windows x64` workflow runs on pushes to `feature/liquid-glass-ui`
-and supports manual dispatch. The initial CI checkpoint builds the existing
-client; the UI changes described in `PLAN.md` are not implemented yet.
-Do not interpret this checkpoint's artifact as the completed redesign.
+and supports manual dispatch. The fork builds with
+`TDESKTOP_FORK_LIQUID_GLASS=ON`; this option also defaults ON. The original
+baseline artifact predates the visual changes. Download an artifact from the
+actual UI commit being reviewed.
+
+## Interface controls and current rendering
+
+Settings → Advanced → Performance exposes **Liquid Glass interface**. Power
+Saving exposes glass blur and smooth scrolling independently; automatic battery
+saving disables costly effects while retaining the floating layout.
+
+The header and both composers use cached, downsampled samples of the current
+chat wallpaper. They retain reserved reading space, so messages do not extend
+behind those bars. Corner buttons sample the actual message-list widget in
+bounded regions outside paint events. Date badges retain translucent palette
+colors with rounded edge highlights; the recorder uses a rounded opaque
+fallback. The fork does not implement native Windows desktop blur or optical
+refraction. No full-window continuous capture is used.
+
+Focused Qt checks exercise blur boundaries, premultiplied alpha, buffer reuse,
+light/dark materials, five DPR values and rendering a small region of a tall
+source widget. These checks do not establish Windows GUI correctness. Test
+normal/narrow windows, light/dark/custom themes, multi-line input, reply/edit,
+recording, pinned navigation, account switches and keyboard/mouse interaction
+with the freshly built client before treating the interface as visually
+verified.
 
 ## Required repository configuration
 

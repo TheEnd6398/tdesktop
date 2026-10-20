@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/pinned_bar.h"
 
 #include "ui/chat/message_bar.h"
+#include "ui/power_saving.h"
 #include "ui/effects/spoiler_mess.h"
 #include "ui/widgets/shadow.h"
 #include "ui/widgets/buttons.h"
@@ -62,6 +63,9 @@ PinnedBar::PinnedBar(
 				st::historyReplyHeight + (Glass::Enabled() ? 2 * st::glassGap : 0));
 			updateControlsGeometry(_wrap.geometry());
 		}
+		_wrap.entity()->update();
+	}, lifetime());
+	PowerSaving::Changes() | rpl::on_next([=] {
 		_wrap.entity()->update();
 	}, lifetime());
 

@@ -20,6 +20,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_todo_list.h"
 #include "info/profile/info_profile_cover.h"
 #include "ui/chat/chat_style.h"
+#include "ui/chat/glass_surface.h"
 #include "ui/effects/reaction_fly_animation.h"
 #include "ui/text/text_options.h"
 #include "ui/painter.h"
@@ -164,17 +165,19 @@ void PaintPreparedDate(
 
 	left += (w - dateTextWidth - st::msgServicePadding.left() - st::msgServicePadding.right()) / 2;
 	int height = st::msgServicePadding.top() + st::msgServiceFont->height + st::msgServicePadding.bottom();
-	ServiceMessagePainter::PaintBubble(
-		p,
-		bg,
-		corners,
-		QRect(
-			left,
-			y + st::msgServiceMargin.top(),
-			dateTextWidth
-				+ st::msgServicePadding.left()
-				+ st::msgServicePadding.left(),
-			height));
+	const auto area = QRect(left, y + st::msgServiceMargin.top(),
+		dateTextWidth + 2 * st::msgServicePadding.left(), height);
+	if (Ui::Glass::Enabled()) {
+		p.save();
+		p.setRenderHint(QPainter::Antialiasing);
+		p.setPen(Qt::NoPen);
+		p.setBrush(bg);
+		p.drawRoundedRect(area, height / 2., height / 2.);
+		Ui::Glass::PaintHighlight(p, area);
+		p.restore();
+	} else {
+		ServiceMessagePainter::PaintBubble(p, bg, corners, area);
+	}
 
 	p.setFont(st::msgServiceFont);
 	p.setPen(fg);
