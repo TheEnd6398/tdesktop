@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "settings/settings_common.h"
 
+#include "ui/chat/glass_surface.h"
 #include "ui/widgets/glass_navigation_button.h"
 
 #include "base/timer.h"
