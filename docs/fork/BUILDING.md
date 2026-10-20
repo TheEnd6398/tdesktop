@@ -99,9 +99,14 @@ the actual uploaded artifact are the source of truth.
 
 ## Download and side-by-side use
 
-After a successful run, open **Actions → Fork Windows x64 → the successful
-run → Artifacts**, download `LiquidGlass-Windows-x64-<commit>`, then extract
-the artifact and its included portable zip into a new writable directory.
+Public preview builds are available under the repository's **Releases** page.
+Download `LiquidGlass-Windows-x64.zip` and extract it into a new writable
+directory. Release assets can be downloaded without signing in to GitHub.
+For a build that has not been published, sign in to GitHub, open
+**Actions → Fork Windows x64 → the successful run → Artifacts**, download
+`LiquidGlass-Windows-x64-<commit>`, then extract the artifact and its included
+portable zip. GitHub Actions artifact downloads require an authenticated
+session even in a public repository.
 Run `LiquidGlass/Start Liquid Glass.cmd`, which passes an isolated `profile`
 folder through the supported `-workdir` flag. Direct EXE launches also default
 to that folder. If it cannot be created or written, the Windows fork uses
@@ -110,7 +115,7 @@ official Telegram's `tdata` or install over its directory.
 The portable package includes the ANGLE `modules` directory when generated.
 
 The build sets `DESKTOP_APP_DISABLE_AUTOUPDATE=ON`; the package excludes the
-Updater. Updates to this fork require downloading a new artifact. Crash
+Updater. Updates to this fork require downloading a new portable package. Crash
 report uploads are disabled for this portable build. The package preserves
 license notices. It is unsigned, and no installer or signing identity is
 provided. Windows SmartScreen and environment-specific runtime dependencies
@@ -126,3 +131,10 @@ step result; it does not establish account, chat or coexistence behavior.
 
 Use the Windows verification matrix in [IMPLEMENTATION.md](IMPLEMENTATION.md)
 for interactive acceptance and known rendering limitations.
+
+To publish an existing successful native build without recompiling it, run
+**Verify Windows fork package** manually with its native `artifact_id` and
+`publish_release` enabled. Verification runs first; publication creates a
+prerelease tagged with the binary's source commit, containing the portable ZIP,
+`verification.json` and `SHA256SUMS.txt`. The publication job needs repository
+contents write permission and leaves existing releases unchanged.

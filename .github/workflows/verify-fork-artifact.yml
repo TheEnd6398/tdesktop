@@ -13,6 +13,11 @@ on:
         description: Native build artifact ID (empty selects the latest successful fork build)
         required: false
         type: string
+      publish_release:
+        description: Publish the verified portable package as a public preview release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,9 +27,13 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      source: ${{ steps.package.outputs.source }}
+      native_run: ${{ steps.package.outputs.native_run }}
     steps:
       - uses: actions/checkout@v7
       - name: Download and verify the native package
+        id: package
         env:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_ID: ${{ inputs.artifact_id }}
@@ -79,6 +88,8 @@ jobs:
               raise RuntimeError('Packaging changed the native executable.')
           with open(os.environ['GITHUB_ENV'], 'a') as output:
               output.write(f'VERIFIED_SOURCE={commit}\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'source={commit}\nnative_run={run_id}\n')
           PY
       - uses: actions/upload-artifact@v7
         with:
@@ -88,3 +99,67 @@ jobs:
             artifact-check/verification.json
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: LiquidGlass-Windows-x64-${{ needs.verify.outputs.source }}-verified
+          path: release
+      - name: Publish the verified portable preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ needs.verify.outputs.source }}
+          NATIVE_RUN: ${{ needs.verify.outputs.native_run }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, subprocess, zipfile
+          repo = os.environ['GITHUB_REPOSITORY']
+          commit = os.environ['SOURCE_COMMIT']
+          if not re.fullmatch(r'[0-9a-f]{40}', commit):
+              raise RuntimeError('Invalid verified source commit.')
+          directory = pathlib.Path('release')
+          archive = directory / 'LiquidGlass-Windows-x64.zip'
+          report_file = directory / 'verification.json'
+          report = json.loads(report_file.read_text())
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          if report['source_commit'] != commit or report['sha256'] != digest:
+              raise RuntimeError('The release package does not match its verification report.')
+          with zipfile.ZipFile(archive) as package:
+              provenance = json.loads(package.read('LiquidGlass/BUILD-INFO.json'))
+              binary_hash = hashlib.sha256(package.read('LiquidGlass/Telegram.exe')).hexdigest()
+          if provenance['source_commit'] != commit or provenance['executable_sha256'] != binary_hash or report['executable_sha256'] != binary_hash:
+              raise RuntimeError('The release executable does not match its build provenance.')
+          checksums = directory / 'SHA256SUMS.txt'
+          checksums.write_text(''.join(
+              f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n'
+              for path in (archive, report_file)))
+          tag = f'liquid-glass-{commit[:10]}'
+          notes = directory / 'release-notes.md'
+          notes.write_text(
+              'Portable Windows x64 preview with the Liquid Glass interface enabled by default.\n\n'
+              'Download **LiquidGlass-Windows-x64.zip**, extract it into a new writable folder, '
+              'and run **LiquidGlass/Start Liquid Glass.cmd**. The fork uses its own profile.\n\n'
+              f'Source commit: `{commit}`.\n\n'
+              f'[Successful native build and startup check](https://github.com/{repo}/actions/runs/{os.environ["NATIVE_RUN"]}). '
+              'Package CRC, AMD64 images, branding, isolated launcher and source/executable provenance passed verification. '
+              'This is the verified native build, without recompilation or changes to the executable.\n\n'
+              f'Portable ZIP SHA-256: `{digest}`.\n\n'
+              'Real-chat screenshots, interactive light/dark theme acceptance, narrow/RTL behavior and performance remain unverified. '
+              f'See the [implementation and Windows acceptance matrix](https://github.com/{repo}/blob/{commit}/docs/fork/IMPLEMENTATION.md).\n')
+          subprocess.run([
+              'gh', 'release', 'create', tag, '--repo', repo, '--target', commit,
+              '--title', f'Liquid Glass Windows x64 preview ({commit[:10]})',
+              '--prerelease', '--latest=false', '--notes-file', str(notes),
+              str(archive), str(report_file), str(checksums),
+          ], check=True)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write(f'[Public portable download](https://github.com/{repo}/releases/download/{tag}/{archive.name})\n')
+          PY
