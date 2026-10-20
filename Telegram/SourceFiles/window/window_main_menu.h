@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/object_ptr.h"
 #include "base/binary_guard.h"
 #include "ui/rp_widget.h"
+#include "ui/chat/glass_surface.h"
 #include "ui/unread_badge.h"
 #include "ui/controls/swipe_handler_data.h"
 #include "ui/layers/layer_widget.h"
@@ -53,6 +54,7 @@ public:
 
 	void parentResized() override;
 	void showFinished() override;
+	void prepareGlassBackdrop();
 
 private:
 	class ToggleAccountsButton;
@@ -88,6 +90,9 @@ private:
 	void drawName(Painter &p);
 
 	const not_null<SessionController*> _controller;
+	const style::SettingsButton &_buttonStyle;
+	Ui::Glass::Surface _glass;
+	std::unique_ptr<QObject> _glassBackdrop;
 	object_ptr<Ui::UserpicButton> _userpicButton;
 	Ui::Text::String _name;
 	int _nameVersion = 0;

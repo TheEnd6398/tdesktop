@@ -408,9 +408,9 @@ void MainWindow::showMainMenu() {
 	if (isHidden()) showFromTray();
 
 	ensureLayerCreated();
-	_layer->showMainMenu(
-		object_ptr<Window::MainMenu>(body(), sessionController()),
-		anim::type::normal);
+	auto menu = object_ptr<Window::MainMenu>(body(), sessionController());
+	menu->prepareGlassBackdrop();
+	_layer->showMainMenu(std::move(menu), anim::type::normal);
 }
 
 void MainWindow::ensureLayerCreated() {
