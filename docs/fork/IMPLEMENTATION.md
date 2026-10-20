@@ -11,7 +11,7 @@ baseline artifact has no redesigned UI.
 | Area | Source integration | Result |
 | --- | --- | --- |
 | Chat header | `history/view/history_view_top_bar_widget.*` | Inset avatar/title/status capsule, independent circular back/call/search/menu controls, matching action masks and title hit testing; search and selection retain their native controls |
-| Normal composer | `history/history_widget.*` | Floating input capsule, separate attachment/emoji surfaces, focus illumination, native send/record control, reply/edit/forward state and bottom-space adjustment |
+| Normal composer | `history/history_widget.*` | Floating input capsule, separate attachment/emoji surfaces, focus illumination, native send/record control, separate reply/edit/forward/link-preview capsule and bottom-space adjustment |
 | Other composers | `history/view/controls/history_view_compose_controls.*` | Equivalent treatment in chat/replies/scheduled views; existing custom rounded contexts keep their native style |
 | Pinned messages | `ui/chat/pinned_bar.*`, `history_view_top_controls.cpp` | Separate rounded bar with inset content and original navigation/close controls |
 | Corner controls | `history_view_corner_buttons.*`, `ui/controls/jump_down_button.*` | Region-limited message-content backdrop, blur and tint for down/mentions/reactions/poll/stash controls; native unread counters remain |
@@ -20,7 +20,7 @@ baseline artifact has no redesigned UI.
 | Folders | `window/window_filters_menu.cpp` | Rounded active/hover folder surfaces, with native icons, badges and accessibility roles |
 | Main menu | `window/window_main_menu.*`, `mainwindow.cpp` | Inset rounded menu, transparent scrolling content and a cached backdrop of the content below the layer stack; existing layer opening animation retained |
 | Settings and profiles | `settings_common.cpp`, `settings_information.cpp`, `info_top_bar.cpp`, `info_profile_top_bar.cpp`, `window_main_menu_helpers.cpp` | Shared rounded navigation hover treatment, top-bar capsules and profile action highlights; native toggles and section behavior retained |
-| Motion | `ui/widgets/smooth_wheel_*`, adoption sites | 220 ms cubic easing for ordinary mouse wheels over both native scroll types, accumulated fractional deltas and immediate cancellation on user navigation or native position/range changes |
+| Motion | `ui/widgets/smooth_wheel_*`, `ui/chat/glass_surface.*`, adoption sites | 220 ms cubic wheel easing; 140 ms hover and 90 ms press feedback on header and composer buttons, with a keyboard-focus outline; reduced motion and native event handling retained |
 | Preferences | `settings_advanced.cpp`, `settings_power_saving.cpp`, `ui/power_saving.h`, `lang.strings` | Live Liquid Glass layout switch; independent blur and smooth-scroll power-saving controls with translated labels |
 
 The header and composer retain the original reading viewport contract, enlarged
@@ -37,6 +37,15 @@ Disabled blur clears retained images and uses an opaque palette tint with the
 same rounded geometry. Hidden overlays do not request capture refreshes. No
 submodule edits or additional dependencies are required.
 
+Reply, edit, forward and link previews occupy their own rounded capsule above
+the input, separated by a style-scaled gap. Both composer implementations
+reserve that gap in their existing history-height calculation. The classic
+composer uses the same preview rectangle for painting, cancellation and pointer
+hit testing; its content is inset and elided to the capsule width. Input and
+attachment/emoji surfaces remain independent when a preview appears. Button
+feedback paints before native icons and ripples, without intercepting input;
+its animations stop when hidden, disabled or reduced motion is selected.
+
 ## Verification boundaries
 
 The three focused Qt executables passed locally in Debug and with
@@ -47,12 +56,13 @@ light/dark tint, fallback opacity, five DPR values and wheel classification,
 easing, fractions, accumulation, reversal, bounds and cancellation. They compile
 the production blur, material and wheel-model sources directly.
 
-Twenty-one application translation units also passed a local C++20 object
+Twenty-eight application translation units also passed a local C++20 object
 compile, including both composers, the header, both message lists, chat sections,
 menus, folders, profiles and settings. These use the real application precompiled
 header and repository-generated scheme, emoji, language and style headers.
-The navigation-button painter and both concrete smooth-wheel adapter templates
-passed against the toolkit's UI header as well. These checks use GCC 14 and
+Four toolkit translation units, including the navigation-button painter and both
+concrete smooth-wheel adapter templates, passed against the UI header as well.
+These checks use GCC 14 and
 Qt 6.8.2; they do not link or launch a complete Linux client.
 
 The Windows workflow checks these components before dependencies, compiles the
@@ -61,6 +71,10 @@ That smoke check requires a native window, ten seconds of responsiveness and
 profile initialization. It then terminates only its own process and removes
 the temporary profile. Consult the actual run for compile and startup results.
 The package includes architecture/import inspection and license notices.
+Before upload, the workflow verifies archive CRC, AMD64 images, fork resources,
+the isolated launcher, excluded private/debug files and the source/executable
+hash recorded in `BUILD-INFO.json`; it uploads `verification.json` alongside
+the portable ZIP.
 
 There is no interactive Windows GUI with an authenticated Telegram account in
 this cloud workspace. No screenshots of the redesigned client, account tests,

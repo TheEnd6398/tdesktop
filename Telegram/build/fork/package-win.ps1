@@ -34,4 +34,13 @@ start "Liquid Glass fork" "%~dp0Telegram.exe" -workdir "%~dp0profile" %*
 $imports = & dumpbin /dependents (Join-Path $package 'Telegram.exe')
 if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the executable imports.' }
 $imports | Set-Content (Join-Path $package 'imports.txt')
+$commit = & git -C $checkout rev-parse HEAD
+if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
+    throw 'Could not identify the packaged source commit.'
+}
+[ordered]@{
+    source_commit = $commit
+    native_build_run = $env:GITHUB_RUN_ID
+    executable_sha256 = (Get-FileHash (Join-Path $package 'Telegram.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+} | ConvertTo-Json | Set-Content -Encoding utf8NoBOM (Join-Path $package 'BUILD-INFO.json')
 Compress-Archive -Path $package -DestinationPath (Join-Path $Destination 'LiquidGlass-Windows-x64.zip')

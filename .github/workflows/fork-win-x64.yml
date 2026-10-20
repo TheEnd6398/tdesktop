@@ -222,9 +222,14 @@ jobs:
           & TBuild/tdesktop/Telegram/build/fork/package-win.ps1 `
             -BuildDirectory TBuild/tdesktop/out/Release `
             -Destination artifact
+          python TBuild/tdesktop/Telegram/build/fork/verify-package.py `
+            artifact/LiquidGlass-Windows-x64.zip --commit $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
           name: LiquidGlass-Windows-x64-${{ github.sha }}
-          path: artifact/LiquidGlass-Windows-x64.zip
+          path: |
+            artifact/LiquidGlass-Windows-x64.zip
+            artifact/verification.json
           if-no-files-found: error
           retention-days: 14

@@ -59,18 +59,20 @@ jobs:
           with zipfile.ZipFile(archive) as package:
               binary_hash = hashlib.sha256(package.read('LiquidGlass/Telegram.exe')).hexdigest()
               needs_guide = 'LiquidGlass/IMPLEMENTATION.md' not in package.namelist()
+              needs_provenance = 'LiquidGlass/BUILD-INFO.json' not in package.namelist()
           with zipfile.ZipFile(archive, 'a', compression=zipfile.ZIP_DEFLATED) as package:
               if needs_guide:
                   guide = json.loads(gh('api', f'repos/{repo}/contents/docs/fork/IMPLEMENTATION.md?ref={commit}'))
                   package.writestr('LiquidGlass/IMPLEMENTATION.md', base64.b64decode(guide['content']))
-              package.writestr('LiquidGlass/BUILD-INFO.json', json.dumps({
-                  'source_commit': commit,
-                  'native_build_run': run_id,
-                  'native_build_artifact': artifact['id'],
-                  'executable_sha256': binary_hash,
-                  'verification_commit': os.environ['GITHUB_SHA'],
-                  'verification_run': os.environ['GITHUB_RUN_ID'],
-              }, indent=2) + '\n')
+              if needs_provenance:
+                  package.writestr('LiquidGlass/BUILD-INFO.json', json.dumps({
+                      'source_commit': commit,
+                      'native_build_run': run_id,
+                      'native_build_artifact': artifact['id'],
+                      'executable_sha256': binary_hash,
+                      'verification_commit': os.environ['GITHUB_SHA'],
+                      'verification_run': os.environ['GITHUB_RUN_ID'],
+                  }, indent=2) + '\n')
           subprocess.run([sys.executable, 'Telegram/build/fork/verify-package.py', str(archive), '--commit', commit], check=True)
           report = json.loads(pathlib.Path('artifact-check/verification.json').read_text())
           if report['executable_sha256'] != binary_hash:
