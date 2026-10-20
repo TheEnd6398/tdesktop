@@ -15,14 +15,21 @@ saving disables costly effects while retaining the floating layout.
 The header and both composers use cached, downsampled samples of the current
 chat wallpaper. They retain reserved reading space, so messages do not extend
 behind those bars. Corner buttons sample the actual message-list widget in
-bounded regions outside paint events. Date badges retain translucent palette
+bounded regions outside paint events. The main menu samples the underlying
+content widget before opening and refreshes its bounded backdrop when that
+content paints. Chat rows, folder buttons, search, settings navigation and
+profile actions share rounded geometry and material highlights. Date badges retain translucent palette
 colors with rounded edge highlights; the recorder uses a rounded opaque
 fallback. The fork does not implement native Windows desktop blur or optical
 refraction. No full-window continuous capture is used.
 
 Focused Qt checks exercise blur boundaries, premultiplied alpha, buffer reuse,
 light/dark materials, five DPR values and rendering a small region of a tall
-source widget. These checks do not establish Windows GUI correctness. Test
+source widget. A third check covers discrete-wheel classification, fractional
+deltas, easing, accumulation, reversal, range limits and cancellation. Mouse
+wheels use the existing scroll APIs; touchpad, phased, horizontal and modified
+wheel input keeps its native path. Flexible settings pages retain their existing
+wheel policy. These checks do not establish Windows GUI correctness. Test
 normal/narrow windows, light/dark/custom themes, multi-line input, reply/edit,
 recording, pinned navigation, account switches and keyboard/mouse interaction
 with the freshly built client before treating the interface as visually
@@ -96,9 +103,10 @@ After a successful run, open **Actions → Fork Windows x64 → the successful
 run → Artifacts**, download `LiquidGlass-Windows-x64-<commit>`, then extract
 the artifact and its included portable zip into a new writable directory.
 Run `LiquidGlass/Start Liquid Glass.cmd`, which passes an isolated `profile`
-folder through the supported `-workdir` flag. Do not copy official Telegram's
-`tdata`, install over its directory, or launch this fork's executable directly
-if you want to ensure the launcher always chooses the isolated directory.
+folder through the supported `-workdir` flag. Direct EXE launches also default
+to that folder. If it cannot be created or written, the Windows fork uses
+`%APPDATA%/Liquid Glass/`. An explicit `-workdir` remains supported. Do not copy
+official Telegram's `tdata` or install over its directory.
 The portable package includes the ANGLE `modules` directory when generated.
 
 The build sets `DESKTOP_APP_DISABLE_AUTOUPDATE=ON`; the package excludes the
@@ -108,8 +116,13 @@ license notices. It is unsigned, and no installer or signing identity is
 provided. Windows SmartScreen and environment-specific runtime dependencies
 must be evaluated on the resulting executable.
 
-Working-directory isolation is the documented coexistence mechanism at this
-checkpoint. Full taskbar/notification/protocol branding and simultaneous-run
-behavior have not been validated; do not register this build as the default
-Telegram protocol handler. The CI package records `dumpbin /dependents`
-output, but import inspection alone is not a startup smoke test.
+The Windows fork uses its own AppUserModelID, toast activator CLSID, startup,
+Send To and Start Menu shortcut names. It skips automatic Telegram protocol
+registration and legacy official-data/installer migration. The package records
+`dumpbin /dependents` output. After compiling, CI launches an unauthenticated
+client with a temporary `-workdir`, requires a native window and ten seconds of
+responsiveness, then removes that test profile. Check the actual smoke-test
+step result; it does not establish account, chat or coexistence behavior.
+
+Use the Windows verification matrix in [IMPLEMENTATION.md](IMPLEMENTATION.md)
+for interactive acceptance and known rendering limitations.

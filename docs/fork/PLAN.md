@@ -1,5 +1,10 @@
 # Liquid Glass fork implementation plan
 
+This is the original design plan. The delivered scope and verification status
+are tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md). In particular, the
+full message-underlap/inset proposal below remains deferred; the implemented
+header and composers retain the native reading viewport and sample wallpaper.
+
 Phase 1 is committed in `RESEARCH.md` and `DESIGN_NOTES.md`. This plan must be
 committed before production or workflow implementation. Work on
 `feature/liquid-glass-ui`, with small commits and a PR targeting `dev`.

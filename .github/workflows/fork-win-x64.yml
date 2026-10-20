@@ -211,6 +211,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build ../out --config Release --target Telegram --parallel 4
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check isolated client startup
+        shell: pwsh
+        run: |
+          & TBuild/tdesktop/Telegram/build/fork/smoke-win.ps1 `
+            -BuildDirectory TBuild/tdesktop/out/Release
       - name: Package portable application
         shell: pwsh
         run: |
