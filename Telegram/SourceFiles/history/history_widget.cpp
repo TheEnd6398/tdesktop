@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_widget.h"
 
+#include "styles/style_fork_glass.h"
+
 #include "api/api_compose_with_ai.h"
 #include "api/api_editing.h"
 #include "api/api_bot.h"
@@ -322,7 +324,7 @@ HistoryWidget::HistoryWidget(
 , _forwardPanel(std::make_unique<ForwardPanel>([=] { updateField(); }))
 , _field(
 	this,
-	st::historyComposeField,
+	Ui::Glass::FieldStyle(st::historyComposeField, lifetime()),
 	Ui::InputField::Mode::MultiLine,
 	tr::lng_message_ph())
 , _richDraftPreview(std::make_unique<HistoryView::Controls::RichDraftPreview>(
@@ -1203,6 +1205,10 @@ HistoryWidget::HistoryWidget(
 	orderWidgets();
 	setupComposeStash();
 	setupShortcuts();
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		updateControlsGeometry();
+		update();
+	}, lifetime());
 
 	_attachToggle->setAccessibleName(tr::lng_attach(tr::now));
 	_tabbedSelectorToggle->setAccessibleName(tr::lng_emoji_sticker_gif(tr::now));
@@ -7538,7 +7544,9 @@ void HistoryWidget::updateSendAsFileGeometry() {
 
 void HistoryWidget::moveFieldControls() {
 	auto keyboardHeight = 0;
-	auto bottom = height();
+	const auto glass = Ui::Glass::Enabled();
+	const auto margin = glass ? st::glassMargin : 0;
+	auto bottom = height() - (glass ? st::glassGap : 0);
 	auto maxKeyboardHeight = computeMaxFieldHeight() - fieldHeight();
 	_keyboard->resizeToWidth(width(), maxKeyboardHeight);
 	if (_kbShown) {
@@ -7552,7 +7560,7 @@ void HistoryWidget::moveFieldControls() {
 // (_botStart|_unblock|_joinChannel|_muteUnmute|_reportMessages)
 
 	auto buttonsBottom = bottom - _attachToggle->height();
-	auto left = st::historySendRight;
+	auto left = st::historySendRight + margin;
 	if (_botMenu) {
 		const auto skip = st::historyBotMenuSkip;
 		_botMenu->moveToLeft(left + skip, buttonsBottom + skip);
@@ -7575,7 +7583,7 @@ void HistoryWidget::moveFieldControls() {
 			left,
 			bottom - fieldHeight() - st::historySendPadding);
 	}
-	auto right = st::historySendRight;
+	auto right = st::historySendRight + margin;
 	_send->moveToRight(right, buttonsBottom); right += _send->width();
 	_voiceRecordBar->moveToLeft(0, bottom - _voiceRecordBar->height());
 	_tabbedSelectorToggle->moveToRight(right, buttonsBottom);
@@ -7643,6 +7651,7 @@ void HistoryWidget::moveFieldControls() {
 void HistoryWidget::updateFieldSize() {
 	const auto kbShowShown = _history && !_kbShown && _keyboard->hasMarkup();
 	auto fieldWidth = width()
+		- (Ui::Glass::Enabled() ? 2 * st::glassMargin : 0)
 		- _attachToggle->width()
 		- st::historySendRight
 		- _send->width()
@@ -8344,7 +8353,7 @@ void HistoryWidget::updateControlsGeometry() {
 		topShadowLeft,
 		_topBar->bottomNoMargins(),
 		width - topShadowLeft - topShadowRight,
-		st::lineWidth);
+		Ui::Glass::Enabled() ? 0 : st::lineWidth);
 }
 
 void HistoryWidget::itemRemoved(not_null<const HistoryItem*> item) {
@@ -8604,6 +8613,9 @@ void HistoryWidget::updateHistoryGeometry(
 	} else {
 		if (editingMessage() || _canSendMessages) {
 			newScrollHeight -= (fieldHeight() + 2 * st::historySendPadding);
+			if (Ui::Glass::Enabled()) {
+				newScrollHeight -= 2 * st::glassGap;
+			}
 		} else if (_sendRestriction) {
 			newScrollHeight -= _sendRestriction->height();
 		}
@@ -9629,7 +9641,7 @@ void HistoryWidget::checkPinnedBarState() {
 	_pinnedBar = std::make_unique<Ui::PinnedBar>(_topBars.get(), [=] {
 		return controller()->isGifPausedAtLeastFor(
 			Window::GifPauseReason::Any);
-	}, controller()->gifPauseLevelChanged());
+	}, controller()->gifPauseLevelChanged(), controller());
 	auto pinnedRefreshed = Info::Profile::SharedMediaCountValue(
 		_peer,
 		MsgId(0), // topicRootId
@@ -11279,7 +11291,27 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 	}
 	p.setInactive(
 		controller()->isGifPausedAtLeastFor(Window::GifPauseReason::Any));
-	p.fillRect(myrtlrect(0, backy, width(), backh), st::historyReplyBg);
+	if (Ui::Glass::Enabled()) {
+		Ui::Glass::PrepareChat(_glassComposer, this, controller(),
+			QRect(0, backy, width(), backh));
+		const auto preview = backh > fieldHeight() + 2 * st::historySendPadding;
+		const auto field = _field->geometry();
+		const auto full = preview
+			? QRect(st::glassMargin, backy, width() - 2 * st::glassMargin, backh)
+			: QRect(field.x() - st::glassInset, backy,
+				field.width() + 2 * st::glassInset, backh);
+		_glassComposer.paint(p, full, st::historyReplyBg->c,
+			st::glassComposerRadius);
+		for (const auto button : std::array<Ui::RpWidget*, 2>{
+			_attachToggle.data(), _tabbedSelectorToggle.data() }) {
+			if (!button->isHidden()) {
+				_glassComposer.paint(p, Ui::Glass::ButtonRect(button->geometry()),
+					st::historyReplyBg->c);
+			}
+		}
+	} else {
+		p.fillRect(myrtlrect(0, backy, width(), backh), st::historyReplyBg);
+	}
 
 	const auto media = (!_previewDrawPreview && drawMsgText)
 		? drawMsgText->media()
