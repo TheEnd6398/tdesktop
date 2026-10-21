@@ -321,7 +321,9 @@ benchmark with `test_glass_material --benchmark`; it measures bounded QWidget
 capture, hashing and filtering, not Telegram message rendering or Windows FPS.
 Native horizontal mouse wheels reuse the same easing, while both axes cancel
 immediately on pixel/phased/modified input. The original vertical curve,
-duration and distance calculation stay unchanged.
+duration and detent distance calculation stay unchanged. Page-sized wheel
+steps use the unobscured reading height, preserving their original distance
+after expanding the physical viewport.
 
 The sampler includes non-glass scroll overlays (including pull controls and
 the native scrollbar) in stacking order, not just the list child. The glass

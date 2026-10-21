@@ -1,6 +1,7 @@
 #include "ui/widgets/smooth_wheel_scroll.h"
 
 #include "ui/widgets/smooth_wheel_model.h"
+#include "ui/chat/glass_surface.h"
 #include "ui/widgets/scroll_area.h"
 #include "ui/widgets/elastic_scroll.h"
 #include "ui/effects/animations.h"
@@ -55,6 +56,14 @@ int WheelStep(not_null<Ui::ScrollArea*> scroll, bool horizontal) {
 
 int WheelStep(not_null<Ui::ElasticScroll*>, bool) {
 	return st::glassWheelStep;
+}
+
+int ReadingHeight(not_null<Ui::ScrollArea*> scroll) {
+	return scroll->height();
+}
+
+int ReadingHeight(not_null<Ui::ElasticScroll*> scroll) {
+	return Glass::ChatReadingHeight(scroll);
 }
 
 template <typename Scroll>
@@ -137,7 +146,7 @@ bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
 	}
 	const auto lines = QApplication::wheelScrollLines();
 	const auto step = (lines < 0)
-		? double(_horizontal ? _scroll->width() : _scroll->height())
+		? double(_horizontal ? _scroll->width() : ReadingHeight(_scroll))
 		: double(lines) * WheelStep(_scroll, _horizontal);
 	const auto nativeHorizontal = _horizontal && IsDiscreteWheel(*event, true);
 	const auto distance = -double(nativeHorizontal ? event->angleDelta().x() : event->angleDelta().y())
