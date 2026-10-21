@@ -74,6 +74,9 @@ void Apply(not_null<Scroll*> scroll, bool horizontal, int value) {
 			scroll->scrollToX(value);
 			return;
 		}
+	} else if (horizontal) {
+		scroll->scrollTo(value);
+		return;
 	}
 	scroll->scrollToY(value);
 }
@@ -134,7 +137,7 @@ bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
 	}
 	const auto lines = QApplication::wheelScrollLines();
 	const auto step = (lines < 0)
-		? double(_scroll->height())
+		? double(_horizontal ? _scroll->width() : _scroll->height())
 		: double(lines) * WheelStep(_scroll, _horizontal);
 	const auto nativeHorizontal = _horizontal && IsDiscreteWheel(*event, true);
 	const auto distance = -double(nativeHorizontal ? event->angleDelta().x() : event->angleDelta().y())
@@ -269,10 +272,9 @@ bool ProcessSmoothWheelScroll(
 	if (const auto area = dynamic_cast<ScrollArea*>(scroll.get())) {
 		const auto axis = horizontal || (IsDiscreteWheel(*event, true) && area->scrollLeftMax() > 0);
 		return Process(not_null<ScrollArea*>(area), event, axis);
-	} else if (!horizontal) {
-		if (const auto elastic = dynamic_cast<ElasticScroll*>(scroll.get())) {
-			return Process(not_null<ElasticScroll*>(elastic), event, false);
-		}
+	} else if (const auto elastic = dynamic_cast<ElasticScroll*>(scroll.get())) {
+		const auto axis = horizontal || (IsDiscreteWheel(*event, true) && elastic->scrollLeftMax() > 0);
+		return Process(not_null<ElasticScroll*>(elastic), event, axis);
 	}
 #endif
 	return false;

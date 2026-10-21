@@ -7,6 +7,5 @@ glassTintOpacity: 0.68;
 glassComposerRadius: 24px;
 glassCompactWidth: 420px;
 glassBlurRadius: 8px;
-glassBlurSupport: 40px;
 glassRowRadius: 16px;
 glassWheelStep: 20px;

@@ -210,7 +210,6 @@ void BackdropIconButton::paintEvent(QPaintEvent *e) {
 			QSize(st().rippleAreaSize, st().rippleAreaSize));
 		p.drawEllipse(area);
 		if (Ui::Glass::Enabled()) {
-			Ui::Glass::PaintHighlight(p, area);
 		}
 	}
 	Ui::IconButton::paintEvent(e);

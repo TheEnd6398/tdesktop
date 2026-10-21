@@ -7398,6 +7398,19 @@ int HistoryWidget::fieldHeight() const {
 		: (st::historySendSize.height() - 2 * st::historySendPadding);
 }
 
+QRect HistoryWidget::fieldInputRect() const {
+	const auto field = _field->geometry();
+	auto result = QRect(field.x() - st::glassInset,
+		field.y() - st::historySendPadding,
+		field.width() + 2 * st::glassInset,
+		fieldHeight() + 2 * st::historySendPadding);
+	for (const auto button : std::array<Ui::RpWidget*, 2>{
+		_attachToggle.data(), _tabbedSelectorToggle.data() }) {
+		if (!button->isHidden()) result = result.united(button->geometry());
+	}
+	return result;
+}
+
 QRect HistoryWidget::fieldHeaderRect() const {
 	const auto glass = Ui::Glass::Enabled();
 	const auto margin = glass ? st::glassMargin : 0;
@@ -11327,11 +11340,7 @@ void HistoryWidget::updateGlassComposerGeometry() {
 	if (!visible) return;
 	const auto hasHeader = _editMsgId || replyTo() || readyToForward()
 		|| _previewDrawPreview || _suggestOptions;
-	auto input = _field->geometry().marginsAdded(QMargins(
-		st::glassInset, st::historySendPadding, st::glassInset, st::historySendPadding));
-	for (const auto button : std::array<Ui::RpWidget*, 2>{ _attachToggle.data(), _tabbedSelectorToggle.data() }) {
-		if (!button->isHidden()) input = input.united(button->geometry());
-	}
+	const auto input = fieldInputRect();
 	auto bounds = input;
 	if (hasHeader) bounds = bounds.united(fieldHeaderRect());
 	_glassComposerOverlay->setGeometry(0, bounds.top(), width(), bounds.height());
@@ -11377,18 +11386,8 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 	p.setInactive(
 		controller()->isGifPausedAtLeastFor(Window::GifPauseReason::Any));
 	if (Ui::Glass::Enabled()) {
-		const auto field = _field->geometry();
 		const auto inputHeight = fieldHeight() + 2 * st::historySendPadding;
-		auto full = QRect(field.x() - st::glassInset,
-			field.y() - st::historySendPadding,
-			field.width() + 2 * st::glassInset, inputHeight);
-		for (const auto button : std::array<Ui::RpWidget*, 2>{
-			_attachToggle.data(), _tabbedSelectorToggle.data() }) {
-			if (button && !button->isHidden()) {
-				full = full.united(button->geometry());
-			}
-		}
-
+		const auto full = fieldInputRect();
 		if (backh > inputHeight) {
 			_glassComposer.paint(p, fieldHeaderRect(), st::historyReplyBg->c,
 				st::glassRowRadius);

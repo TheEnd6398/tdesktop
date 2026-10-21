@@ -519,7 +519,6 @@ void TopBar::paintEvent(QPaintEvent *e) {
 	}
 	if (Ui::Glass::Enabled() && !_roundRect) {
 		auto surface = Ui::Glass::Surface();
-		surface.setShadow(st::glassShadow);
 		surface.paint(p, rect().marginsRemoved(QMargins(
 			st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)),
 			anim::color(_st.bg, _st.highlightBg, highlight));
