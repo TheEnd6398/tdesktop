@@ -1418,7 +1418,7 @@ void Suggestions::setupTabs() {
 			return false;
 		}
 		_tabsScrollAnimation.stop();
-		if (Ui::ProcessSmoothWheelScroll(_tabsScroll, e, true)) return true;
+		if (Ui::ProcessSmoothWheelScroll(_tabsScroll.get(), e, true)) return true;
 		const auto y = pixelDelta.y() ? pixelDelta.y() : angleDelta.y();
 		_tabsScroll->scrollToX(_tabsScroll->scrollLeft() - y);
 		return true;

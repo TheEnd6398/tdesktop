@@ -209,6 +209,7 @@ the pinned submodule revision is unchanged.
 - `Telegram/SourceFiles/ui/controls/jump_down_button.cpp`
 - `Telegram/SourceFiles/ui/controls/jump_down_button.h`
 - `Telegram/SourceFiles/ui/controls/labeled_emoji_tabs.cpp`
+- `Telegram/SourceFiles/ui/controls/labeled_emoji_tabs.h`
 - `Telegram/SourceFiles/ui/power_saving.h`
 - `Telegram/SourceFiles/ui/widgets/chat_filters_tabs_strip.cpp`
 - `Telegram/SourceFiles/ui/widgets/glass_navigation_button.cpp`

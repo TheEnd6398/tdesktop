@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "ui/emoji_config.h"
+#include "ui/effects/animations.h"
 #include "ui/rp_widget.h"
 #include "ui/text/text_custom_emoji.h"
 
