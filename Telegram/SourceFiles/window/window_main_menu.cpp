@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "mainwidget.h"
 #include "styles/style_fork_glass.h"
+#include "styles/style_layers.h"
 
 #include "apiwrap.h"
 #include "base/event_filter.h"
@@ -354,7 +355,8 @@ MainMenu::MainMenu(
 	Ui::CreateChild<Ui::FlatLabel>(_footer.get(), st::mainMenuTelegramLabel))
 , _version(AddVersionLabel(_footer)) {
 	setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
-	_glassBackdrop = Ui::Glass::ObserveBackdrop(this, controller->content(), &_glass);
+	_glassBackdrop = Ui::Glass::ObserveBackdrop(this, controller->content(), &_glass,
+		[] { return st::layerBg->c; });
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
 		setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
 		parentResized();
@@ -681,7 +683,7 @@ void MainMenu::parentResized() {
 
 void MainMenu::prepareGlassBackdrop() {
 	moveToLeft(0, 0);
-	Ui::Glass::PrepareBackdrop(_glass, this, _controller->content());
+	Ui::Glass::PrepareBackdrop(_glass, this, _controller->content(), st::layerBg->c);
 }
 
 void MainMenu::showFinished() {

@@ -78,7 +78,7 @@ public:
 		not_null<QWidget*> source,
 		not_null<Surface*> surface,
 		Window::SessionController *controller = nullptr,
-		QWidget *sampler = nullptr, Fn<QRect()> bounds = {});
+		QWidget *sampler = nullptr, Fn<QRect()> bounds = {}, Fn<QColor()> shade = {});
 	~Backdrop() override;
 
 private:
@@ -91,6 +91,7 @@ private:
 	const QPointer<QWidget> _sampler;
 	Window::SessionController *_controller = nullptr;
 	Fn<QRect()> _bounds;
+	Fn<QColor()> _shade;
 	const not_null<Surface*> _surface;
 	bool _scheduled = false;
 	bool _enabled = false;
@@ -103,13 +104,14 @@ Backdrop::Backdrop(
 		not_null<QWidget*> source,
 		not_null<Surface*> surface,
 		Window::SessionController *controller,
-		QWidget *sampler, Fn<QRect()> bounds)
+		QWidget *sampler, Fn<QRect()> bounds, Fn<QColor()> shade)
 : QObject(target)
 , _target(target)
 , _source(source)
 , _sampler(sampler)
 , _controller(controller)
 , _bounds(std::move(bounds))
+, _shade(std::move(shade))
 , _surface(surface) {
 	Expects(controller || !source->isAncestorOf(target));
 	QCoreApplication::instance()->installEventFilter(this);
@@ -184,7 +186,7 @@ void Backdrop::refresh() {
 	if (_controller && _sampler) {
 		PrepareChat(*_surface, _sampler.data(), _controller, _bounds ? _bounds() : QRect());
 	} else {
-		PrepareBackdrop(*_surface, _target, _source.data());
+		PrepareBackdrop(*_surface, _target, _source.data(), _shade ? _shade() : QColor());
 	}
 	if (_surface->checksum() != before) {
 		_target->update();
@@ -196,7 +198,8 @@ void Backdrop::refresh() {
 void PrepareBackdrop(
 		Surface &surface,
 		not_null<QWidget*> target,
-		not_null<QWidget*> source) {
+		not_null<QWidget*> source,
+		QColor shade) {
 	surface.setTintOpacity(st::glassTintOpacity);
 	surface.setBlurRadius(st::glassBlurRadius);
 	if (!BlurEnabled()) {
@@ -208,6 +211,7 @@ void PrepareBackdrop(
 	surface.prepare(target->rect(), target->devicePixelRatioF(), [&](QPainter &p, QRect clip) {
 		p.fillRect(clip, st::windowBg);
 		RenderRegion(p, source, offset, clip);
+		p.fillRect(clip, shade);
 	}, MapToWidget(target, target->window()));
 }
 
@@ -224,8 +228,10 @@ std::unique_ptr<QObject> ObserveChatBackdrop(
 std::unique_ptr<QObject> ObserveBackdrop(
 		not_null<RpWidget*> target,
 		not_null<QWidget*> source,
-		not_null<Surface*> surface) {
-	return std::make_unique<Backdrop>(target, source, surface);
+		not_null<Surface*> surface,
+		Fn<QColor()> shade) {
+	return std::make_unique<Backdrop>(target, source, surface, nullptr, nullptr,
+		Fn<QRect()>(), std::move(shade));
 }
 
 bool Enabled() {

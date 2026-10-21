@@ -284,3 +284,11 @@ filter pixels is captured beyond the capsule, then cropped only at composition.
 CPU raster strips avoid a separate GL context/widget per capsule and preserve
 the current Qt Widgets architecture. Performance measurements below distinguish
 synthetic strip costs from real authenticated-chat frame costs.
+
+The existing layer-stack fade/slide clock is retained. A small toolkit switch
+makes its shade fill the entire window, including the floating menu margins.
+Menu backdrop capture includes the final shade color before blur; the cached
+slide uses that same material so handing over to the live panel does not
+change its tint. Click-to-close stays on the existing layer stack. The toolkit
+change is versioned as `fork-patches/0001-full-window-menu-shade.patch` and
+applied idempotently before `lib_ui` is configured; it is not a gitlink repin.

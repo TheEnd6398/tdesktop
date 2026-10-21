@@ -59,7 +59,8 @@ void PrepareChat(
 void PrepareBackdrop(
 	Surface &surface,
 	not_null<QWidget*> target,
-	not_null<QWidget*> source);
+	not_null<QWidget*> source,
+	QColor shade = {});
 
 [[nodiscard]] std::unique_ptr<QObject> ObserveChatBackdrop(
 	not_null<RpWidget*> target,
@@ -71,6 +72,7 @@ void PrepareBackdrop(
 [[nodiscard]] std::unique_ptr<QObject> ObserveBackdrop(
 	not_null<RpWidget*> target,
 	not_null<QWidget*> source,
-	not_null<Surface*> surface);
+	not_null<Surface*> surface,
+	Fn<QColor()> shade = {});
 
 } // namespace Ui::Glass

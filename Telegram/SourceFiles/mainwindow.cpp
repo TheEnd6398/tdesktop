@@ -409,6 +409,7 @@ void MainWindow::showMainMenu() {
 
 	ensureLayerCreated();
 	auto menu = object_ptr<Window::MainMenu>(body(), sessionController());
+	_layer->setFullWindowMainMenuShade(Ui::Glass::Enabled());
 	menu->prepareGlassBackdrop();
 	_layer->showMainMenu(std::move(menu), anim::type::normal);
 }

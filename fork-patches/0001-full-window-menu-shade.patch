@@ -1,0 +1,53 @@
+diff --git a/ui/layers/layer_widget.cpp b/ui/layers/layer_widget.cpp
+index ec3171e..fdef0e6 100644
+--- a/ui/layers/layer_widget.cpp
++++ b/ui/layers/layer_widget.cpp
+@@ -32,6 +32,7 @@ public:
+ 	}
+ 
+ 	void setLayerBoxes(const QRect &specialLayerBox, const QRect &layerBox);
++	void setFullWindowShade(bool enabled) { _fullWindowShade = enabled; update(); }
+ 	void setCacheImages(
+ 		QPixmap &&bodyCache,
+ 		QPixmap &&mainMenuCache,
+@@ -82,6 +83,7 @@ private:
+ 	QRect _layerBox, _layerCacheBox;
+ 	int _mainMenuRight = 0;
+ 
++	bool _fullWindowShade = false;
+ 	bool _mainMenuShown = false;
+ 	bool _specialLayerShown = false;
+ 	bool _layerShown = false;
+@@ -264,7 +266,8 @@ void LayerStackWidget::BackgroundWidget::paintEvent(QPaintEvent *e) {
+ 
+ 	p.setOpacity(bgOpacity);
+ 	auto overSpecialOpacity = (layerOpacity * specialLayerOpacity);
+-	auto bg = myrtlrect(mainMenuRight, 0, width() - mainMenuRight, height());
++	auto bg = _fullWindowShade ? rect()
++		: myrtlrect(mainMenuRight, 0, width() - mainMenuRight, height());
+ 
+ 	if (_mainMenuCache.isNull() && mainMenuRight > 0) {
+ 		// All cache images are taken together with their shadows,
+@@ -402,6 +405,10 @@ bool LayerWidget::focusNextPrevChild(bool next) {
+ 	return base::FocusNextPrevChildBlocked(this, next);
+ }
+ 
++void LayerStackWidget::setFullWindowMainMenuShade(bool enabled) {
++	_background->setFullWindowShade(enabled);
++}
++
+ void LayerStackWidget::setHideByBackgroundClick(bool hide) {
+ 	_hideByBackgroundClick = hide;
+ }
+diff --git a/ui/layers/layer_widget.h b/ui/layers/layer_widget.h
+index 21ce8a7..c5a4426 100644
+--- a/ui/layers/layer_widget.h
++++ b/ui/layers/layer_widget.h
+@@ -208,6 +208,7 @@ public:
+ 	void hideTopLayer(anim::type animated);
+ 	bool closeCurrentByBackButton();
+ 	void setHideByBackgroundClick(bool hide);
++	void setFullWindowMainMenuShade(bool enabled);
+ 	void removeBodyCache();
+ 
+ 	// If you need to divide animated hideAll().
