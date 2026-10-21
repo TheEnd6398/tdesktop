@@ -322,3 +322,10 @@ capture, hashing and filtering, not Telegram message rendering or Windows FPS.
 Native horizontal mouse wheels reuse the same easing, while both axes cancel
 immediately on pixel/phased/modified input. The original vertical curve,
 duration and distance calculation stay unchanged.
+
+The sampler includes non-glass scroll overlays (including pull controls and
+the native scrollbar) in stacking order, not just the list child. The glass
+corner-button subtree is excluded entirely to prevent self capture. Wallpaper
+is mapped in section coordinates, so a small corner button samples the same
+wallpaper scale and position as the full chat. Both classic chat-removal paths
+destroy the owned wrapper as QWidget and clear the old composer surface.

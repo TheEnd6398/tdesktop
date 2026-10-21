@@ -118,6 +118,22 @@ int main(int argc, char **argv) {
 	Check(pattern.painted == QRect(100, 4000, 40, 40), "Backdrop rendered the full source widget.");
 	Check(pattern.capturing, "Widget paint did not identify the backdrop capture.");
 	Check(!Ui::Glass::CapturingBackdrop(), "Backdrop capture leaked into normal painting.");
+	auto child = Pattern(&pattern);
+	child.setGeometry(100, 4000, 40, 40);
+	child.background = Qt::blue;
+	child.show();
+	{
+		auto p = QPainter(&region);
+		Ui::Glass::RenderRegion(p, &pattern, QPoint(100, 4000), region.rect(), false);
+	}
+	Check(region.pixel(5, 20) == qRgb(0, 255, 0), "Content-only capture included an overlay child.");
+	{
+		auto p = QPainter(&region);
+		Ui::Glass::RenderRegion(p, &pattern, QPoint(100, 4000), region.rect());
+	}
+	Check(region.pixel(5, 20) == qRgb(0, 0, 255), "Normal capture lost child overlays.");
+	child.hide();
+
 	auto transparent = Pattern(&root);
 	transparent.resize(640, 10000);
 	transparent.fill = false;

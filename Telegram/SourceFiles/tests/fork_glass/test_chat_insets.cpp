@@ -1,5 +1,6 @@
 #include "ui/chat/chat_content_insets.h"
 
+#include <QtCore/QPointer>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QScrollArea>
 #include <QtWidgets/QScrollBar>
@@ -58,6 +59,10 @@ int main(int argc, char **argv) {
 		content->resize(480, 320);
 		app.processEvents();
 		Check(bar->maximum() == 0, "A short history gained an extra scroll range.");
+		const auto guardContent = QPointer<QWidget>(content);
+		const auto guardWrapper = QPointer<QWidget>(wrapper);
+		delete scroll.takeWidget();
+		Check(!guardContent && !guardWrapper, "Replacing a chat did not destroy its complete wrapped content.");
 	}
 	std::cout << "Chat insets: anchors, range, composer growth, toggles and short histories passed.\n";
 }

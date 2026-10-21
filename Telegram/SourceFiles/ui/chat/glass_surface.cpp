@@ -51,7 +51,7 @@ QWidget *ChatSource(QWidget *target) {
 	for (auto widget = target; widget; widget = widget->parentWidget()) {
 		const auto object = widget->property("forkChatScroll").value<QObject*>();
 		if (const auto scroll = dynamic_cast<ElasticScroll*>(object)) {
-			return scroll->widget();
+			return scroll;
 		}
 	}
 	return nullptr;
@@ -158,7 +158,7 @@ bool Backdrop::eventFilter(QObject *object, QEvent *event) {
 
 void Backdrop::schedule() {
 	if (_scheduled || _target->isHidden() || !_source || !_enabled
-		|| !_target->isVisibleTo(_target->window()) || _target->window()->isHidden()) {
+		|| !_target->isVisibleTo(_target->window()) || (_target->window()->isHidden() || _target->window()->isMinimized())) {
 		return;
 	}
 	_scheduled = true;
@@ -178,7 +178,7 @@ void Backdrop::refresh() {
 	}
 	if (!_source || _target->isHidden() || _source->isHidden()
 		|| !_enabled || !_target->isVisibleTo(_target->window())
-		|| _target->window()->isHidden()) {
+		|| (_target->window()->isHidden() || _target->window()->isMinimized())) {
 		return;
 	}
 	const auto before = _surface->checksum();
@@ -199,7 +199,7 @@ void PrepareBackdrop(
 		not_null<QWidget*> target,
 		not_null<QWidget*> source,
 		QColor shade) {
-	if (ChatSource(target) == source) {
+	if (const auto chat = ChatSource(target); chat && (chat == source || source->parentWidget() == chat)) {
 		for (auto parent = target->parentWidget(); parent; parent = parent->parentWidget()) {
 			if (const auto section = dynamic_cast<Window::AbstractSectionWidget*>(parent)) {
 				PrepareChat(surface, target, section->controller());
@@ -455,7 +455,15 @@ void PrepareChat(
 	}
 	const auto content = controller->content();
 	const auto origin = MapToWidget(widget, content);
-	const auto offset = QPoint(0, origin.y() - content->backgroundFromY());
+	auto section = widget.get();
+	for (auto parent = widget.get(); parent; parent = parent->parentWidget()) {
+		if (dynamic_cast<Window::AbstractSectionWidget*>(parent)) {
+			section = parent;
+			break;
+		}
+	}
+	const auto sectionOrigin = MapToWidget(section, content);
+	const auto offset = QPoint(origin.x() - sectionOrigin.x(), origin.y() - content->backgroundFromY());
 	surface.prepare(bounds.isEmpty() ? widget->rect() : bounds,
 		widget->devicePixelRatioF(),
 		[&](QPainter &p, QRect clip) {
@@ -464,12 +472,19 @@ void PrepareChat(
 			Window::SectionWidget::PaintBackground(
 				p,
 				controller->currentChatTheme(),
-				QSize(widget->width(), content->height()),
+				QSize(section->width(), content->height()),
 				clip.translated(offset),
 				true);
 			p.translate(offset);
 			if (const auto source = ChatSource(widget)) {
-				RenderRegion(p, source, MapToWidget(widget, source), clip);
+				RenderRegion(p, source, MapToWidget(widget, source), clip, false);
+				for (const auto object : source->children()) {
+					const auto child = dynamic_cast<QWidget*>(object);
+					if (child && !child->isHidden() && !child->isWindow()
+						&& !child->property("forkGlassOverlay").toBool()) {
+						RenderRegion(p, child, MapToWidget(widget, child), clip);
+					}
+				}
 			}
 		}, MapToWidget(widget, widget->window()));
 }

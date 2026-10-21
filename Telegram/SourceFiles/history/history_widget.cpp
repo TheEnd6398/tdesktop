@@ -3430,7 +3430,9 @@ void HistoryWidget::showHistory(
 
 	_mediaEditManager.cancel();
 	_membersDropdownShowTimer.cancel();
-	_scroll->takeWidget<HistoryInner>().destroy();
+	if (_glassComposerOverlay) _glassComposerOverlay->hide();
+	_glassComposer.clear();
+	_scroll->takeWidget<QWidget>().destroy();
 
 	clearInlineBot();
 
@@ -11781,7 +11783,9 @@ HistoryWidget::~HistoryWidget() {
 	// updateTopBarSelection(). Left to ~QWidget's deleteChildren() that
 	// happens after _topBar, an earlier child, was already deleted.
 	_list = nullptr;
-	_scroll->takeWidget<HistoryInner>().destroy();
+	if (_glassComposerOverlay) _glassComposerOverlay->hide();
+	_glassComposer.clear();
+	_scroll->takeWidget<QWidget>().destroy();
 
 	_subsectionTabsLifetime.destroy();
 	_subsectionTopicsLifetime.destroy();

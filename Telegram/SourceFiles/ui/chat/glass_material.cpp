@@ -25,12 +25,13 @@ QPoint MapToWidget(QWidget *from, QWidget *to) {
 	return to->mapFromGlobal(from->mapToGlobal(QPoint()));
 }
 
-void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds) {
+void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds, bool children) {
 	const auto region = bounds.translated(offset).intersected(source->rect());
 	if (!region.isEmpty()) {
 		const auto guard = QScopedValueRollback(RenderDepth, RenderDepth + 1);
-		source->render(&p, region.topLeft() - offset, QRegion(region),
-			QWidget::DrawChildren);
+		auto flags = QWidget::RenderFlags();
+		if (children) flags |= QWidget::DrawChildren;
+		source->render(&p, region.topLeft() - offset, QRegion(region), flags);
 	}
 }
 

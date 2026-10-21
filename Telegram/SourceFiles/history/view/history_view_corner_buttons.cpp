@@ -238,6 +238,7 @@ CornerButtons::CornerButtons(
 	// updatePositions, so that a click there reaches the list under it. Until
 	// the first button is shown there is nothing to mask, so the column stays
 	// out of the hit test entirely.
+	_column.setProperty("forkGlassOverlay", true);
 	_column.setAttribute(Qt::WA_TransparentForMouseEvents);
 	_column.show();
 	_column.setVisualTabOrder(true);

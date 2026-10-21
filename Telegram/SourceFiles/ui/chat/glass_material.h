@@ -10,7 +10,7 @@ namespace Ui::Glass {
 
 [[nodiscard]] QPoint MapToWidget(QWidget *from, QWidget *to);
 [[nodiscard]] bool CapturingBackdrop();
-void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds);
+void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds, bool children = true);
 void PaintButtonFeedback(
 	QPainter &p,
 	QRect rect,
