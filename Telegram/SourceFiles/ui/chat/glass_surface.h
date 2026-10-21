@@ -2,9 +2,11 @@
 
 #include "ui/chat/glass_material.h"
 #include "base/basic_types.h"
+#include "base/object_ptr.h"
 #include <rpl/producer.h>
 #include <rpl/lifetime.h>
 #include <memory>
+#include <vector>
 
 class QObject;
 
@@ -20,6 +22,7 @@ struct ScrollArea;
 
 namespace Ui {
 class AbstractButton;
+class ElasticScroll;
 class RpWidget;
 } // namespace Ui
 
@@ -40,6 +43,13 @@ void BindButtonFeedback(not_null<AbstractButton*> button);
 [[nodiscard]] const style::ScrollArea &TransparentScrollStyle(
 	const style::ScrollArea &original,
 	rpl::lifetime &lifetime);
+
+[[nodiscard]] object_ptr<RpWidget> WrapChatContent(object_ptr<RpWidget> content);
+void SetChatReadingGeometry(not_null<ElasticScroll*> scroll, QRect reading, int top, int bottom);
+[[nodiscard]] int ChatReadingHeight(not_null<ElasticScroll*> scroll);
+[[nodiscard]] QRect ChatReadingRect(not_null<ElasticScroll*> scroll);
+void MaskCapsules(not_null<QWidget*> widget, const std::vector<QRect> &rects, int radius = 0);
+void MaskOverlayChildren(not_null<RpWidget*> container);
 
 void PrepareChat(
 	Surface &surface,

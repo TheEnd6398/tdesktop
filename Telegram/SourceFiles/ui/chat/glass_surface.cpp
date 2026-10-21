@@ -8,6 +8,7 @@
 #include "mainwidget.h"
 #include "ui/rp_widget.h"
 #include "ui/abstract_button.h"
+#include "ui/widgets/elastic_scroll.h"
 #include "ui/effects/animations.h"
 #include "base/invoke_queued.h"
 #include "styles/style_fork_glass.h"
@@ -16,6 +17,7 @@
 #include <QtCore/QPointer>
 #include <QtCore/QCoreApplication>
 #include <QtGui/QPaintEvent>
+#include <QtGui/QPainterPath>
 
 
 namespace Ui::Glass {
@@ -25,6 +27,42 @@ rpl::event_stream<bool> EnabledChanges;
 
 constexpr auto kHoverDuration = crl::time(140);
 constexpr auto kPressDuration = crl::time(90);
+
+class ChatContent final : public RpWidget {
+public:
+	ChatContent(QWidget *parent, object_ptr<RpWidget> content)
+	: RpWidget(parent), _content(std::move(content)) {
+		_content->setParent(this);
+		_content->show();
+		_content->sizeValue() | rpl::on_next([=] { refresh(); }, lifetime());
+	}
+	void setInsets(int top, int bottom) {
+		_top = top;
+		_bottom = bottom;
+		refresh();
+	}
+	[[nodiscard]] int reserve() const { return _top + _bottom; }
+	[[nodiscard]] int top() const { return _top; }
+	[[nodiscard]] int bottom() const { return _bottom; }
+private:
+	void refresh() {
+		_content->move(0, _top);
+		resize(_content->width(), _content->height() + reserve());
+	}
+	object_ptr<RpWidget> _content;
+	int _top = 0;
+	int _bottom = 0;
+};
+
+QWidget *ChatSource(QWidget *target) {
+	for (auto widget = target; widget; widget = widget->parentWidget()) {
+		const auto object = widget->property("forkChatScroll").value<QObject*>();
+		if (const auto scroll = dynamic_cast<ElasticScroll*>(object)) {
+			return scroll->widget();
+		}
+	}
+	return nullptr;
+}
 
 struct ButtonFeedback {
 	Ui::Animations::Simple hover;
@@ -294,6 +332,72 @@ const style::ScrollArea &TransparentScrollStyle(
 #endif
 }
 
+object_ptr<RpWidget> WrapChatContent(object_ptr<RpWidget> content) {
+	return object_ptr<ChatContent>(content->parentWidget(), std::move(content));
+}
+
+void SetChatReadingGeometry(not_null<ElasticScroll*> scroll, QRect reading, int top, int bottom) {
+	if (const auto content = dynamic_cast<ChatContent*>(scroll->widget())) {
+		content->setInsets(top, bottom);
+	}
+	scroll->parentWidget()->setProperty("forkChatScroll", QVariant::fromValue<QObject*>(scroll));
+	scroll->setGeometry(reading.adjusted(0, -top, 0, bottom));
+	scroll->lower();
+}
+
+int ChatReadingHeight(not_null<ElasticScroll*> scroll) {
+	const auto content = dynamic_cast<ChatContent*>(scroll->widget());
+	return std::max(0, scroll->height() - (content ? content->reserve() : 0));
+}
+
+QRect ChatReadingRect(not_null<ElasticScroll*> scroll) {
+	const auto content = dynamic_cast<ChatContent*>(scroll->widget());
+	return content
+		? scroll->geometry().adjusted(0, content->top(), 0, -content->bottom())
+		: scroll->geometry();
+}
+
+void MaskCapsules(not_null<QWidget*> widget, const std::vector<QRect> &rects, int radius) {
+	if (!Enabled()) {
+		widget->clearMask();
+		widget->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+		return;
+	}
+	auto path = QPainterPath();
+	path.setFillRule(Qt::WindingFill);
+	for (const auto &rect : rects) {
+		if (!rect.isEmpty()) {
+			const auto r = radius ? radius : rect.height() / 2.;
+			path.addRoundedRect(QRectF(rect).adjusted(-st::lineWidth, -st::lineWidth, st::lineWidth, st::lineWidth), r, r);
+		}
+	}
+	const auto mask = QRegion(path.toFillPolygon().toPolygon());
+	widget->setAttribute(Qt::WA_TransparentForMouseEvents, mask.isEmpty());
+	if (!mask.isEmpty()) {
+		widget->setMask(mask);
+	}
+}
+
+void MaskOverlayChildren(not_null<RpWidget*> container) {
+	if (!Enabled()) {
+		container->clearMask();
+		container->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+		return;
+	}
+	auto mask = QRegion();
+	for (const auto child : container->children()) {
+		const auto widget = dynamic_cast<QWidget*>(child);
+		if (widget && !widget->isHidden() && !widget->testAttribute(Qt::WA_TransparentForMouseEvents)) {
+			mask += (widget->mask().isEmpty() ? QRegion(widget->rect()) : widget->mask())
+				.translated(widget->pos());
+		}
+	}
+	container->setAttribute(Qt::WA_TransparentForMouseEvents, mask.isEmpty());
+	if (!mask.isEmpty()) {
+		container->setMask(mask);
+	}
+}
+
 void PrepareChat(
 		Surface &surface,
 		not_null<QWidget*> widget,
@@ -317,6 +421,10 @@ void PrepareChat(
 				QSize(widget->width(), content->height()),
 				clip.translated(offset),
 				true);
+			p.translate(offset);
+			if (const auto source = ChatSource(widget)) {
+				RenderRegion(p, source, MapToWidget(widget, source), clip);
+			}
 		});
 }
 

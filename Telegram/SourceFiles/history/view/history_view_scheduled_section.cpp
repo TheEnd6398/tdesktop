@@ -233,10 +233,12 @@ ScheduledWidget::ScheduledWidget(
 	}, lifetime());
 
 	_scroll->setHandleTouch(false);
-	_inner = _scroll->setOwnedWidget(object_ptr<ListWidget>(
+	auto content = object_ptr<ListWidget>(
 		this,
 		&controller->session(),
-		static_cast<ListDelegate*>(this)));
+		static_cast<ListDelegate*>(this));
+	_inner = content.data();
+	_scroll->setOwnedWidget(Ui::Glass::WrapChatContent(std::move(content)));
 	_inner->lower();
 	_scroll->move(0, _topBar->height());
 	_scroll->show();
@@ -1192,13 +1194,13 @@ void ScheduledWidget::updateControlsGeometry() {
 	const auto bottom = height();
 	const auto controlsHeight = _composeControls->heightCurrent();
 	const auto scrollHeight = bottom - _topBar->height() - controlsHeight;
-	const auto scrollSize = QSize(contentWidth, scrollHeight);
-	if (_scroll->size() != scrollSize) {
-		_skipScrollEvent = true;
-		_scroll->resize(scrollSize);
-		_inner->resizeToWidth(scrollSize.width(), _scroll->height());
-		_skipScrollEvent = false;
-	}
+	_skipScrollEvent = true;
+	Ui::Glass::SetChatReadingGeometry(_scroll.get(),
+		QRect(0, _topBar->height(), contentWidth, scrollHeight),
+		Ui::Glass::Enabled() ? _topBar->height() : 0,
+		Ui::Glass::Enabled() ? controlsHeight : 0);
+	_inner->resizeToWidth(contentWidth, scrollHeight);
+	_skipScrollEvent = false;
 	if (!_scroll->isHidden()) {
 		if (newScrollTop) {
 			_scroll->scrollToY(*newScrollTop);
@@ -1206,7 +1208,7 @@ void ScheduledWidget::updateControlsGeometry() {
 		updateInnerVisibleArea();
 	}
 	_composeControls->move(0, bottom - controlsHeight);
-	_composeControls->setAutocompleteBoundingRect(_scroll->geometry());
+	_composeControls->setAutocompleteBoundingRect(Ui::Glass::ChatReadingRect(_scroll.get()));
 
 	_cornerButtons.updatePositions();
 }
@@ -1241,7 +1243,7 @@ void ScheduledWidget::updateInnerVisibleArea() {
 		checkReplyReturns();
 	}
 	const auto scrollTop = _scroll->scrollTop();
-	const auto scrollBottom = scrollTop + _scroll->height();
+	const auto scrollBottom = scrollTop + Ui::Glass::ChatReadingHeight(_scroll.get());
 	_inner->setVisibleTopBottom(scrollTop, scrollBottom);
 	_cornerButtons.updateJumpDownVisibility();
 	_cornerButtons.updateUnreadThingsVisibility();
@@ -1415,7 +1417,7 @@ bool ScheduledWidget::floatPlayerHandleWheelEvent(QEvent *e) {
 }
 
 QRect ScheduledWidget::floatPlayerAvailableRect() {
-	return mapToGlobal(_scroll->geometry());
+	return mapToGlobal(Ui::Glass::ChatReadingRect(_scroll.get()));
 }
 
 Context ScheduledWidget::listContext() {

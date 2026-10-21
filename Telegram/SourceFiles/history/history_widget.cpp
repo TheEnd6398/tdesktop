@@ -1108,7 +1108,7 @@ HistoryWidget::HistoryWidget(
 			if (top >= 0) {
 				auto scrollTop = _scroll->scrollTop();
 				if (top + view->height() > scrollTop
-					&& top < scrollTop + _scroll->height()) {
+					&& top < scrollTop + Ui::Glass::ChatReadingHeight(_scroll)) {
 					*query.isVisible = true;
 				}
 			}
@@ -1213,6 +1213,14 @@ HistoryWidget::HistoryWidget(
 	orderWidgets();
 	setupComposeStash();
 	setupShortcuts();
+	_glassComposerOverlay = std::make_unique<Ui::RpWidget>(this);
+	_glassComposerOverlay->paintRequest() | rpl::on_next([=](QRect clip) {
+		if (!_list || isSearching() || !Ui::Glass::Enabled()) return;
+		auto p = Painter(_glassComposerOverlay.get());
+		p.translate(-_glassComposerOverlay->pos());
+		drawField(p, clip.translated(_glassComposerOverlay->pos()));
+	}, _glassComposerOverlay->lifetime());
+	_glassComposerOverlay->hide();
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
 		updateControlsGeometry();
 		update();
@@ -1828,7 +1836,7 @@ void HistoryWidget::scrollToCurrentVoiceMessage(
 		auto toTop = _list->itemTop(toView);
 		if (toTop >= 0 && !isItemCompletelyHidden(from)) {
 			auto scrollTop = _scroll->scrollTop();
-			auto scrollBottom = scrollTop + _scroll->height();
+			auto scrollBottom = scrollTop + Ui::Glass::ChatReadingHeight(_scroll);
 			auto toBottom = toTop + toView->height();
 			if ((toTop < scrollTop && toBottom < scrollBottom)
 				|| (toTop > scrollTop && toBottom > scrollBottom)) {
@@ -1877,7 +1885,7 @@ void HistoryWidget::animatedScrollToY(int scrollTo, HistoryItem *attachTo) {
 	}
 
 	_scrollToAnimation.stop();
-	auto maxAnimatedDelta = _scroll->height();
+	auto maxAnimatedDelta = Ui::Glass::ChatReadingHeight(_scroll);
 	auto transition = anim::sineInOut;
 	if (scrollTo > scrollTop + maxAnimatedDelta) {
 		scrollTop = scrollTo - maxAnimatedDelta;
@@ -1947,7 +1955,7 @@ int HistoryWidget::itemTopForHighlight(
 		? view->reactionButtonParameters({}, {}).center.y()
 		: -1;
 
-	const auto visibleAreaHeight = _scroll->height();
+	const auto visibleAreaHeight = Ui::Glass::ChatReadingHeight(_scroll);
 	const auto viewHeight = view->height();
 	const auto heightLeft = (visibleAreaHeight - viewHeight);
 	if (heightLeft >= 0) {
@@ -3210,7 +3218,7 @@ bool HistoryWidget::insideJumpToEndInsteadOfToUnread() const {
 	}
 	_history->calculateFirstUnreadMessage();
 	const auto unread = _history->firstUnreadMessage();
-	const auto visibleBottom = _scroll->scrollTop() + _scroll->height();
+	const auto visibleBottom = _scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll);
 	DEBUG_LOG(("JumpToEnd(%1, %2, %3): "
 		"unread: %4, top: %5, visibleBottom: %6."
 		).arg(_history->peer->name()
@@ -3529,8 +3537,9 @@ void HistoryWidget::showHistory(
 			}
 		}
 
-		_list = _scroll->setOwnedWidget(
-			object_ptr<HistoryInner>(this, _scroll, controller(), _history));
+		auto content = object_ptr<HistoryInner>(this, _scroll, controller(), _history);
+		_list = content.data();
+		_scroll->setOwnedWidget(Ui::Glass::WrapChatContent(std::move(content)));
 		_pullToNext->reset(anim::type::instant);
 		_list->sendIntroSticker(
 		) | rpl::on_next([=](not_null<DocumentData*> sticker) {
@@ -3776,7 +3785,7 @@ void HistoryWidget::injectSponsoredMessages() const {
 	session().sponsoredMessages().inject(
 		_history,
 		_showAtMsgId,
-		_scroll->height() * 2,
+		Ui::Glass::ChatReadingHeight(_scroll) * 2,
 		_scroll->width());
 }
 
@@ -4724,7 +4733,7 @@ void HistoryWidget::maybeMarkReactionsRead(not_null<HistoryItem*> item) {
 	const auto reactionCenter
 		= view->reactionButtonParameters({}, {}).center.y();
 	const auto visibleTop = _scroll->scrollTop();
-	const auto visibleBottom = visibleTop + _scroll->height();
+	const auto visibleBottom = visibleTop + Ui::Glass::ChatReadingHeight(_scroll);
 	if (itemTop + reactionCenter < visibleTop
 		|| itemTop + view->height() > visibleBottom) {
 		return;
@@ -5347,14 +5356,14 @@ bool HistoryWidget::isItemCompletelyHidden(HistoryItem *item) const {
 
 	const auto bottom = top + view->height();
 	const auto scrollTop = _scroll->scrollTop();
-	const auto scrollBottom = scrollTop + _scroll->height();
+	const auto scrollBottom = scrollTop + Ui::Glass::ChatReadingHeight(_scroll);
 	return (top >= scrollBottom || bottom <= scrollTop);
 }
 
 void HistoryWidget::visibleAreaUpdated() {
 	if (_list && !_firstLoadRequest && !_scroll->isHidden()) {
 		const auto scrollTop = _scroll->scrollTop();
-		const auto scrollBottom = scrollTop + _scroll->height();
+		const auto scrollBottom = scrollTop + Ui::Glass::ChatReadingHeight(_scroll);
 		_list->visibleAreaUpdated(scrollTop, scrollBottom);
 		controller()->floatPlayerAreaUpdated();
 		session().data().itemVisibilitiesUpdated();
@@ -5395,7 +5404,7 @@ void HistoryWidget::preloadHistoryByScroll() {
 
 	auto scrollTop = _scroll->scrollTop();
 	auto scrollTopMax = _scroll->scrollTopMax();
-	auto scrollHeight = _scroll->height();
+	auto scrollHeight = Ui::Glass::ChatReadingHeight(_scroll);
 	if (scrollTop + kPreloadHeightsCount * scrollHeight >= scrollTopMax) {
 		loadMessagesDown();
 	}
@@ -5446,7 +5455,7 @@ void HistoryWidget::checkReplyReturns() {
 	}
 	auto scrollTop = _scroll->scrollTop();
 	auto scrollTopMax = _scroll->scrollTopMax();
-	auto scrollHeight = _scroll->height();
+	auto scrollHeight = Ui::Glass::ChatReadingHeight(_scroll);
 	while (const auto replyReturn = _cornerButtons.replyReturn()) {
 		auto below = !replyReturn->mainView()
 			&& (replyReturn->history() == _history)
@@ -6815,7 +6824,7 @@ bool HistoryWidget::floatPlayerHandleWheelEvent(QEvent *e) {
 }
 
 QRect HistoryWidget::floatPlayerAvailableRect() {
-	return _peer ? mapToGlobal(_scroll->geometry()) : mapToGlobal(rect());
+	return _peer ? mapToGlobal(Ui::Glass::ChatReadingRect(_scroll)) : mapToGlobal(rect());
 }
 
 bool HistoryWidget::readyToForward() const {
@@ -7673,6 +7682,7 @@ void HistoryWidget::moveFieldControls() {
 	if (_sendRestriction) {
 		_sendRestriction->setGeometry(fullWidthButtonRect);
 	}
+	updateGlassComposerGeometry();
 }
 
 void HistoryWidget::updateFieldSize() {
@@ -8345,15 +8355,8 @@ void HistoryWidget::updateControlsGeometry() {
 	_topBars->resize(
 		innerWidth,
 		scrollAreaTop - _topBars->y() + st::lineWidth);
-	if (_scroll->y() != scrollAreaTop || _scroll->x() != tabsLeftSkip) {
-		_scroll->moveToLeft(tabsLeftSkip, scrollAreaTop);
-		if (_autocomplete) {
-			_autocomplete->setBoundings(_scroll->geometry());
-		}
-		if (_supportAutocomplete) {
-			_supportAutocomplete->setBoundings(_scroll->geometry());
-		}
-	}
+	Ui::Glass::MaskOverlayChildren(_topBars.get());
+	_scroll->setProperty("forkReadingTop", scrollAreaTop);
 
 	updateHistoryGeometry(
 		false,
@@ -8666,10 +8669,15 @@ void HistoryWidget::updateHistoryGeometry(
 	}
 	const auto wasScrollTop = _scroll->scrollTop();
 	const auto wasAtBottom = (wasScrollTop >= _scroll->scrollTopMax());
-	const auto needResize = (_scroll->width() != newScrollWidth)
-		|| (_scroll->height() != newScrollHeight);
+	const auto needResize = (Ui::Glass::ChatReadingRect(_scroll).top() != _scroll->property("forkReadingTop").toInt())
+		|| (_scroll->width() != newScrollWidth)
+		|| (Ui::Glass::ChatReadingHeight(_scroll) != newScrollHeight);
 	if (needResize) {
-		_scroll->resize(newScrollWidth, newScrollHeight);
+		const auto top = _scroll->property("forkReadingTop").toInt();
+		const auto bottom = height() - top - newScrollHeight;
+		Ui::Glass::SetChatReadingGeometry(_scroll,
+			myrtlrect(width() - newScrollWidth, top, newScrollWidth, newScrollHeight),
+			Ui::Glass::Enabled() ? top : 0, Ui::Glass::Enabled() ? bottom : 0);
 		// on initial updateListSize we didn't put the _scroll->scrollTop
 		// correctly yet so visibleAreaUpdated() call will erase it
 		// with the new (undefined) value
@@ -8679,10 +8687,10 @@ void HistoryWidget::updateHistoryGeometry(
 	}
 	if (needResize || initial) {
 		if (_autocomplete) {
-			_autocomplete->setBoundings(_scroll->geometry());
+			_autocomplete->setBoundings(Ui::Glass::ChatReadingRect(_scroll));
 		}
 		if (_supportAutocomplete) {
-			_supportAutocomplete->setBoundings(_scroll->geometry());
+			_supportAutocomplete->setBoundings(Ui::Glass::ChatReadingRect(_scroll));
 		}
 		_cornerButtons.updatePositions();
 		controller()->floatPlayerAreaUpdated();
@@ -8835,7 +8843,7 @@ void HistoryWidget::startMessageSendingAnimation(
 		if (top < 0) {
 			return std::nullopt;
 		}
-		const auto additional = (_list->height() == _scroll->height())
+		const auto additional = (_list->height() == Ui::Glass::ChatReadingHeight(_scroll))
 			? view->height()
 			: 0;
 		return _list->mapToGlobal(QPoint(0, top - additional));
@@ -9128,7 +9136,7 @@ std::optional<bool> HistoryWidget::cornerButtonsDownShown() {
 			return false;
 		}
 		const auto top = _list->itemTop(unread);
-		return (top >= _scroll->scrollTop() + _scroll->height());
+		return (top >= _scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll));
 	};
 	if (haveUnreadBelowBottom(_history)
 		|| haveUnreadBelowBottom(_migrated)) {
@@ -9541,7 +9549,7 @@ void HistoryWidget::updatePinnedViewer() {
 		|| !_pinnedTracker) {
 		return;
 	}
-	const auto visibleBottom = _scroll->scrollTop() + _scroll->height();
+	const auto visibleBottom = _scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll);
 	auto [view, offset] = _list->findViewForPinnedTracking(visibleBottom);
 	const auto lessThanId = !view
 		? (ServerMaxMsgId - 1)
@@ -10035,7 +10043,7 @@ void HistoryWidget::requestMessageData(MsgId msgId) {
 bool HistoryWidget::checkSponsoredMessageBarVisibility() const {
 	const auto h = _list->height()
 		- (_kbScroll->isHidden() ? 0 : _kbScroll->height());
-	return (h > _scroll->height());
+	return (h > Ui::Glass::ChatReadingHeight(_scroll));
 }
 
 void HistoryWidget::requestSponsoredMessageBar() {
@@ -11295,12 +11303,38 @@ void HistoryWidget::updateReplyToName() {
 		context);
 }
 
+void HistoryWidget::updateGlassComposerGeometry() {
+	if (!_glassComposerOverlay) return;
+	const auto visible = Ui::Glass::Enabled() && _list
+		&& !isSearching() && (fieldOrDisabledShown() || isRecording());
+	_glassComposerOverlay->setVisible(visible);
+	if (!visible) return;
+	const auto hasHeader = _editMsgId || replyTo() || readyToForward()
+		|| _previewDrawPreview || _suggestOptions;
+	auto input = _field->geometry().marginsAdded(QMargins(
+		st::glassInset, st::historySendPadding, st::glassInset, st::historySendPadding));
+	for (const auto button : { _attachToggle.data(), _tabbedSelectorToggle.data() }) {
+		if (!button->isHidden()) input = input.united(button->geometry());
+	}
+	auto bounds = input;
+	if (hasHeader) bounds = bounds.united(fieldHeaderRect());
+	_glassComposerOverlay->setGeometry(0, bounds.top(), width(), bounds.height());
+	auto areas = std::vector<QRect>{ input.translated(0, -bounds.top()) };
+	if (hasHeader) areas.push_back(fieldHeaderRect().translated(0, -bounds.top()));
+	Ui::Glass::MaskCapsules(_glassComposerOverlay.get(), areas, st::glassComposerRadius);
+	_glassComposerOverlay->stackUnder(_field);
+	_glassComposerOverlay->update();
+}
+
 void HistoryWidget::updateField() {
 	if (_repaintFieldScheduled) {
 		return;
 	}
 	_repaintFieldScheduled = true;
-	const auto fieldAreaTop = _scroll->y() + _scroll->height();
+	if (_glassComposerOverlay && _glassComposerOverlay->isVisible()) {
+		_glassComposerOverlay->update();
+	}
+	const auto fieldAreaTop = Ui::Glass::ChatReadingRect(_scroll).bottom() + 1;
 	rtlupdate(0, fieldAreaTop, width(), height() - fieldAreaTop);
 }
 
@@ -11650,7 +11684,7 @@ void HistoryWidget::paintEvent(QPaintEvent *e) {
 			|| readyToForward()
 			|| _kbShown
 			|| _suggestOptions) {
-			if (!isSearching()) {
+			if (!isSearching() && (!Ui::Glass::Enabled() || !_glassComposerOverlay->isVisible())) {
 				drawField(p, clip);
 			}
 		}
@@ -11693,8 +11727,8 @@ QPoint HistoryWidget::clampMousePosition(QPoint point) {
 	}
 	if (point.y() < _scroll->scrollTop()) {
 		point.setY(_scroll->scrollTop());
-	} else if (point.y() >= _scroll->scrollTop() + _scroll->height()) {
-		point.setY(_scroll->scrollTop() + _scroll->height() - 1);
+	} else if (point.y() >= _scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll)) {
+		point.setY(_scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll) - 1);
 	}
 	return point;
 }

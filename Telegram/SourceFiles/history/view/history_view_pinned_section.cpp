@@ -181,10 +181,12 @@ PinnedWidget::PinnedWidget(
 	}, lifetime());
 
 	_scroll->setHandleTouch(false);
-	_inner = _scroll->setOwnedWidget(object_ptr<ListWidget>(
+	auto content = object_ptr<ListWidget>(
 		this,
 		&controller->session(),
-		static_cast<ListDelegate*>(this)));
+		static_cast<ListDelegate*>(this));
+	_inner = content.data();
+	_scroll->setOwnedWidget(Ui::Glass::WrapChatContent(std::move(content)));
 	_inner->lower();
 	_scroll->move(0, _topBar->height());
 	_scroll->show();
@@ -540,14 +542,13 @@ void PinnedWidget::updateControlsGeometry() {
 	_translateBar->resizeToWidth(contentWidth);
 	top += _translateBarHeight;
 	const auto scrollHeight = bottom - top - controlsHeight;
-	const auto scrollSize = QSize(contentWidth, scrollHeight);
-	if (_scroll->size() != scrollSize) {
-		_skipScrollEvent = true;
-		_scroll->resize(scrollSize);
-		_inner->resizeToWidth(scrollSize.width(), _scroll->height());
-		_skipScrollEvent = false;
-	}
-	_scroll->move(0, top);
+	_skipScrollEvent = true;
+	Ui::Glass::SetChatReadingGeometry(_scroll.get(),
+		QRect(0, top, contentWidth, scrollHeight),
+		Ui::Glass::Enabled() ? top : 0,
+		Ui::Glass::Enabled() ? 0 : 0);
+	_inner->resizeToWidth(contentWidth, scrollHeight);
+	_skipScrollEvent = false;
 	if (!_scroll->isHidden()) {
 		if (newScrollTop) {
 			_scroll->scrollToY(*newScrollTop);
@@ -581,7 +582,7 @@ void PinnedWidget::onScroll() {
 
 void PinnedWidget::updateInnerVisibleArea() {
 	const auto scrollTop = _scroll->scrollTop();
-	_inner->setVisibleTopBottom(scrollTop, scrollTop + _scroll->height());
+	_inner->setVisibleTopBottom(scrollTop, scrollTop + Ui::Glass::ChatReadingHeight(_scroll.get()));
 	_cornerButtons.updateJumpDownVisibility();
 	_cornerButtons.updateUnreadThingsVisibility();
 }
@@ -605,7 +606,7 @@ bool PinnedWidget::floatPlayerHandleWheelEvent(QEvent *e) {
 }
 
 QRect PinnedWidget::floatPlayerAvailableRect() {
-	return mapToGlobal(_scroll->geometry());
+	return mapToGlobal(Ui::Glass::ChatReadingRect(_scroll.get()));
 }
 
 Context PinnedWidget::listContext() {

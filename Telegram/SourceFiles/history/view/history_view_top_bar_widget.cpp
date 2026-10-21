@@ -1388,6 +1388,21 @@ void TopBarWidget::updateControlsGeometry() {
 		_rightTaken += _search->width() + (glass ? 0 : st::topBarCallSkip);
 	}
 
+	if (glass) {
+		auto areas = std::vector<QRect>{ glassTitleRect(), glassActionsRect() };
+		if (showSelectedActions() || _searchMode || _selectedShown.animating()
+			|| _searchShown.animating() || _chooseForReportReason) {
+			areas = { rect().marginsRemoved(QMargins(margin, gap, margin, gap)) };
+		} else {
+			for (const auto button : { _back.data(), _cancelChoose.data() }) {
+				if (!button->isHidden()) areas.push_back(Ui::Glass::ButtonRect(button->geometry()));
+			}
+		}
+		Ui::Glass::MaskCapsules(this, areas);
+	} else {
+		clearMask();
+	}
+
 	updateMembersShowArea();
 	for (const auto button : { _back.data(), _cancelChoose.data(),
 		_call.data(), _groupCall.data(), _search.data(),

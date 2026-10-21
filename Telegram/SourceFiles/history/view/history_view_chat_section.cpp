@@ -535,10 +535,12 @@ ChatWidget::ChatWidget(
 	}, lifetime());
 
 	_scroll->setHandleTouch(false);
-	_inner = _scroll->setOwnedWidget(object_ptr<ListWidget>(
+	auto content = object_ptr<ListWidget>(
 		this,
 		&controller->session(),
-		static_cast<ListDelegate*>(this)));
+		static_cast<ListDelegate*>(this));
+	_inner = content.data();
+	_scroll->setOwnedWidget(Ui::Glass::WrapChatContent(std::move(content)));
 	_inner->lower();
 	_topControls = std::make_unique<TopControls>(
 		this,
@@ -4432,15 +4434,14 @@ void ChatWidget::updateControlsGeometry() {
 	}
 	bottom -= tabsBottomSkip;
 
-	const auto scrollHeight = bottom - top;
-	const auto scrollSize = QSize(innerWidth, scrollHeight);
-	if (_scroll->size() != scrollSize) {
-		_skipScrollEvent = true;
-		_scroll->resize(scrollSize);
-		_inner->resizeToWidth(scrollSize.width(), _scroll->height());
-		_skipScrollEvent = false;
-	}
-	_scroll->move(tabsLeftSkip, top);
+	const auto scrollHeight = std::max(0, bottom - top);
+	_skipScrollEvent = true;
+	Ui::Glass::SetChatReadingGeometry(_scroll.get(),
+		QRect(tabsLeftSkip, top, innerWidth, scrollHeight),
+		Ui::Glass::Enabled() ? top : 0,
+		Ui::Glass::Enabled() ? height() - bottom : 0);
+	_inner->resizeToWidth(innerWidth, scrollHeight);
+	_skipScrollEvent = false;
 	if (!_scroll->isHidden()) {
 		if (wasAtBottom) {
 			_scroll->scrollToY(_scroll->scrollTopMax());
@@ -4450,9 +4451,9 @@ void ChatWidget::updateControlsGeometry() {
 		updateInnerVisibleArea();
 	}
 	_composeControls->move(0, composeTop);
-	_composeControls->setAutocompleteBoundingRect(_scroll->geometry());
+	_composeControls->setAutocompleteBoundingRect(Ui::Glass::ChatReadingRect(_scroll.get()));
 	if (_supportAutocomplete) {
-		_supportAutocomplete->setBoundings(_scroll->geometry());
+		_supportAutocomplete->setBoundings(Ui::Glass::ChatReadingRect(_scroll.get()));
 	}
 	_composeControlsTop = composeTop;
 
@@ -4473,7 +4474,7 @@ void ChatWidget::updateSubsectionTabsGeometry() {
 		return;
 	}
 	const auto subsectionTabsTop = _topBar->bottomNoMargins();
-	const auto scrollBottom = _scroll->y() + _scroll->height();
+	const auto scrollBottom = _scroll->y() + Ui::Glass::ChatReadingHeight(_scroll.get());
 	const auto areaHeight = scrollBottom
 		+ _subsectionTabs->bottomSkip()
 		- subsectionTabsTop;
@@ -4554,7 +4555,7 @@ void ChatWidget::updateInnerVisibleArea() {
 		checkReplyReturns();
 	}
 	const auto scrollTop = _scroll->scrollTop();
-	_inner->setVisibleTopBottom(scrollTop, scrollTop + _scroll->height());
+	_inner->setVisibleTopBottom(scrollTop, scrollTop + Ui::Glass::ChatReadingHeight(_scroll.get()));
 	updatePinnedVisibility();
 	_topControls->updatePinnedViewer();
 	_cornerButtons.updateJumpDownVisibility();
@@ -4667,7 +4668,7 @@ bool ChatWidget::floatPlayerHandleWheelEvent(QEvent *e) {
 }
 
 QRect ChatWidget::floatPlayerAvailableRect() {
-	return mapToGlobal(_scroll->geometry());
+	return mapToGlobal(Ui::Glass::ChatReadingRect(_scroll.get()));
 }
 
 Context ChatWidget::listContext() {
@@ -5059,7 +5060,7 @@ bool ChatWidget::injectNextSponsoredMessage() {
 	const auto lookup = _inner->lookupInjectAfter(
 		anchor,
 		state->postsBetween,
-		_scroll->height() * 2);
+		Ui::Glass::ChatReadingHeight(_scroll.get()) * 2);
 	if (!lookup.after
 		|| (lookup.ranOffEnd
 			&& (state->injectedAny
@@ -5848,7 +5849,7 @@ void ChatWidget::listPaintEmpty(
 	} else if (!_emptyPainter) {
 		setupEmptyPainter();
 	}
-	_emptyPainter->paint(p, context.st, width(), _scroll->height());
+	_emptyPainter->paint(p, context.st, width(), Ui::Glass::ChatReadingHeight(_scroll.get()));
 }
 
 QString ChatWidget::listElementAuthorRank(not_null<const Element*> view) {

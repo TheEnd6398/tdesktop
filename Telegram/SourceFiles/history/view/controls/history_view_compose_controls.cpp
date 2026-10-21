@@ -5762,6 +5762,11 @@ void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
 		}
 		_glass.paint(p, area,
 			_st.bg->c, st::glassComposerRadius);
+		auto areas = std::vector<QRect>{ area };
+		if (_header->isDisplayed()) areas.push_back(_header->geometry());
+		if (!_send->isHidden()) areas.push_back(_send->geometry());
+		if (_voiceRecordBar->isActive()) areas.push_back(_voiceRecordBar->geometry());
+		Ui::Glass::MaskCapsules(_wrap.get(), areas, st::glassComposerRadius);
 
 	} else if (_backgroundRect) {
 		auto hq = PainterHighQualityEnabler(p);
@@ -5887,6 +5892,7 @@ int ComposeControls::composeFieldHeight() const {
 }
 
 void ComposeControls::updateHeight() {
+	if (!Ui::Glass::Enabled()) _wrap->clearMask();
 	const auto glass = Ui::Glass::Enabled() && !_backgroundRect;
 	const auto height = (_header->isDisplayed()
 		? _header->height() + (glass ? st::glassGap : 0)

@@ -161,6 +161,9 @@ void PinnedBar::setRightButton(object_ptr<Ui::RpWidget> button) {
 void PinnedBar::updateControlsGeometry(QRect wrapGeometry) {
 	const auto margin = Glass::Enabled() ? st::glassMargin : 0;
 	const auto gap = Glass::Enabled() ? st::glassGap : 0;
+	Glass::MaskCapsules(_wrap.entity(), { _wrap.entity()->rect().marginsRemoved(
+		QMargins(margin, gap, margin, gap)) });
+	Glass::MaskOverlayChildren(&_wrap);
 	_bar->widget()->resizeToWidth(wrapGeometry.width() - 2 * margin);
 	_bar->widget()->moveToLeft(margin, gap);
 	if (_right.button) {

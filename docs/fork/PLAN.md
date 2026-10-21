@@ -2,8 +2,7 @@
 
 This is the original design plan. The delivered scope and verification status
 are tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md). In particular, the
-full message-underlap/inset proposal below remains deferred; the implemented
-header and composers retain the native reading viewport and sample wallpaper.
+original reserved-viewport delivery is superseded by Iteration 2 below.
 
 Phase 1 is committed in `RESEARCH.md` and `DESIGN_NOTES.md`. This plan must be
 committed before production or workflow implementation. Work on
@@ -263,3 +262,13 @@ attachment and emoji controls share the input surface, with the native
 send/record control separate. This follows the input grouping in Telegram
 macOS (`Telegram-Mac/ChatInputView.swift` in `overtake/TelegramSwift`), while
 retaining this client's native event handlers and optional bot controls.
+
+The message list is owned by a transparent content wrapper with top/bottom
+reserves equal to the overlaid bars. The physical scroll widget expands by
+those same reserves, preserving the original scroll maximum and list-local
+message coordinates. Reading height, read tracking, jumps, autocomplete,
+corner buttons and pull controls use the unobscured rectangle. Classic
+composer painting moves onto a masked sibling overlay above the list; header,
+pinned and intermediary containers are masked to their actual controls so
+empty space reaches the list. Backdrop composition paints the wallpaper and
+then the bounded live list region, excluding sibling glass widgets.
