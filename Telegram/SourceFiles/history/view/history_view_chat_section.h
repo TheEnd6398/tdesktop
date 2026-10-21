@@ -574,6 +574,7 @@ private:
 	rpl::variable<QString> _botKeyboardPlaceholder;
 	std::unique_ptr<ComposeControls> _composeControls;
 	std::unique_ptr<SuggestOptionsBar> _suggestOptions;
+	std::unique_ptr<Ui::RpWidget> _suggestOverlay;
 	std::unique_ptr<ComposeSearch> _composeSearch;
 	std::unique_ptr<HistoryView::BottomControls> _bottom;
 	std::unique_ptr<HistoryView::AboutView> _aboutView;

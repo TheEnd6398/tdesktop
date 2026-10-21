@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "ui/chat/glass_surface.h"
+
 #include "history/view/controls/history_view_compose_media_edit_manager.h"
 #include "history/view/history_view_corner_buttons.h"
 #include "history/history_drag_area.h"
@@ -420,6 +422,7 @@ private:
 	void createTabbedPanel();
 	void setTabbedPanel(std::unique_ptr<TabbedPanel> panel);
 	void updateField();
+	void updateGlassComposerGeometry();
 	void fieldChanged();
 	[[nodiscard]] bool suppressSendAction() const;
 	void fieldFocused();
@@ -666,7 +669,8 @@ private:
 		Painter &p,
 		const QRect &rect,
 		int left,
-		int top) const;
+		int top,
+		int outerWidth) const;
 	bool paintShowAnimationFrame();
 
 	void updateMouseTracking();
@@ -719,6 +723,8 @@ private:
 		TextUpdateEvents events = 0,
 		FieldHistoryAction fieldHistoryAction = FieldHistoryAction::Clear);
 	[[nodiscard]] int fieldHeight() const;
+	[[nodiscard]] QRect fieldHeaderRect() const;
+	[[nodiscard]] QRect fieldInputRect() const;
 	[[nodiscard]] bool fieldOrDisabledShown() const;
 	[[nodiscard]] bool fieldHasSendText() const;
 	[[nodiscard]] bool hasSendableContent() const;
@@ -851,6 +857,7 @@ private:
 
 	bool _preserveScrollTop = false;
 	bool _repaintFieldScheduled = false;
+	bool _glassLayoutTransaction = false;
 	bool _sentFromScheduledTip = false;
 
 	mtpRequestId _saveEditMsgRequestId = 0;
@@ -963,6 +970,9 @@ private:
 	std::shared_ptr<Ui::ChatStyle> _fieldChatStyle;
 	bool _cmdStartShown = false;
 	object_ptr<Ui::InputField> _field;
+	Ui::Glass::Surface _glassComposer;
+	std::unique_ptr<Ui::RpWidget> _glassComposerOverlay;
+	std::unique_ptr<QObject> _glassBackdrop;
 	std::unique_ptr<HistoryView::Controls::RichDraftPreview> _richDraftPreview;
 	base::unique_qptr<Ui::RpWidget> _fieldDisabled;
 	std::unique_ptr<Ui::RpWidget> _sendRestriction;

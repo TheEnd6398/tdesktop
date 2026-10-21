@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_corner_buttons.h"
 
 #include "ui/chat/chat_style.h"
+#include "ui/chat/glass_surface.h"
 #include "ui/controls/jump_down_button.h"
 #include "ui/widgets/elastic_scroll.h"
 #include "ui/widgets/popup_menu.h"
@@ -185,6 +186,7 @@ CornerButtons::CornerButtons(
 	[=](QEvent *e) { return parent->viewportEvent(e); },
 	st,
 	delegate) {
+	_backdropSource = [=] { return parent->viewport(); };
 }
 
 CornerButtons::CornerButtons(
@@ -196,6 +198,15 @@ CornerButtons::CornerButtons(
 	[=](QEvent *e) { return parent->viewportEvent(e); },
 	st,
 	delegate) {
+	_backdropSource = [=] { return parent->viewport(); };
+}
+
+void CornerButtons::setupGlassBackdrop(not_null<QWidget*> viewport) {
+	for (const auto button : {
+		_down.widget.data(), _mentions.widget.data(), _reactions.widget.data(),
+		_pollVotes.widget.data(), _stash.widget.data() }) {
+		button->setBackdropSource(viewport);
+	}
 }
 
 CornerButtons::CornerButtons(
@@ -227,6 +238,7 @@ CornerButtons::CornerButtons(
 	// updatePositions, so that a click there reaches the list under it. Until
 	// the first button is shown there is nothing to mask, so the column stays
 	// out of the hit test entirely.
+	_column.setProperty("forkGlassOverlay", true);
 	_column.setAttribute(Qt::WA_TransparentForMouseEvents);
 	_column.show();
 	_column.setVisualTabOrder(true);
@@ -526,6 +538,13 @@ void CornerButtons::updateJumpDownVisibility(std::optional<int> counter) {
 }
 
 void CornerButtons::updatePositions() {
+	if (_backdropSource) {
+		const auto source = _backdropSource();
+		if (source && source != _glassSource) {
+			_glassSource = source;
+			setupGlassBackdrop(source);
+		}
+	}
 	const auto checkVisibility = [](CornerButton &button) {
 		const auto shouldBeHidden = !button.shown
 			&& !button.animation.animating();
@@ -539,10 +558,14 @@ void CornerButtons::updatePositions() {
 
 	// All corner buttons is a child widgets of _column over _scroll, not me.
 
+	const auto elastic = dynamic_cast<Ui::ElasticScroll*>(_parent.get());
+	const auto reading = elastic ? Ui::Glass::ChatReadingRect(elastic)
+		: _parent->geometry();
+	const auto readingHeight = reading.height();
 	const auto columnWidth = st::historyToDown.width
 		+ 2 * st::historyToDownPosition.x();
-	_column.resize(columnWidth, _parent->height());
-	_column.moveToRight(0, 0, _parent->width());
+	_column.resize(columnWidth, readingHeight);
+	_column.moveToRight(0, reading.top() - _parent->y(), _parent->width());
 
 	const auto historyDownShown = shown(_down);
 	const auto unreadMentionsShown = shown(_mentions);
@@ -557,7 +580,7 @@ void CornerButtons::updatePositions() {
 			historyDownShown);
 		_down.widget->moveToRight(
 			st::historyToDownPosition.x(),
-			_parent->height() - top);
+			readingHeight - top);
 	}
 	{
 		const auto right = anim::interpolate(
@@ -568,7 +591,7 @@ void CornerButtons::updatePositions() {
 			0,
 			_down.widget->height() + skip,
 			historyDownShown);
-		const auto top = _parent->height()
+		const auto top = readingHeight
 			- _mentions.widget->height()
 			- st::historyToDownPosition.y()
 			- shift;
@@ -587,7 +610,7 @@ void CornerButtons::updatePositions() {
 			0,
 			_mentions.widget->height() + skip,
 			unreadMentionsShown);
-		const auto top = _parent->height()
+		const auto top = readingHeight
 			- _reactions.widget->height()
 			- st::historyToDownPosition.y()
 			- shift;
@@ -610,7 +633,7 @@ void CornerButtons::updatePositions() {
 				0,
 				_reactions.widget->height() + skip,
 				unreadReactionsShown);
-		const auto top = _parent->height()
+		const auto top = readingHeight
 			- _pollVotes.widget->height()
 			- st::historyToDownPosition.y()
 			- shift;
@@ -637,7 +660,7 @@ void CornerButtons::updatePositions() {
 				0,
 				_pollVotes.widget->height() + skip,
 				unreadPollVotesShown);
-		const auto top = _parent->height()
+		const auto top = readingHeight
 			- _stash.widget->height()
 			- st::historyToDownPosition.y()
 			- shift;

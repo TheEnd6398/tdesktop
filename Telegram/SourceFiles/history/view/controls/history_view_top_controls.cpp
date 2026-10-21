@@ -299,7 +299,7 @@ void TopControls::updatePinnedViewer() {
 		return;
 	}
 	const auto migrated = migratedPeer();
-	const auto visibleBottom = _scroll->scrollTop() + _scroll->height();
+	const auto visibleBottom = _scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll);
 	auto [view, offset] = _list->findViewForPinnedTracking(visibleBottom);
 	const auto lessThanId = !view
 		? (ServerMaxMsgId - 1)
@@ -364,7 +364,7 @@ rpl::producer<int> TopControls::heightValue() const {
 void TopControls::setupRootView() {
 	_repliesRootView = std::make_unique<Ui::PinnedBar>(_topBars.get(), [=] {
 		return _controller->isGifPausedAtLeastFor(Window::GifPauseReason::Any);
-	}, _controller->gifPauseLevelChanged());
+	}, _controller->gifPauseLevelChanged(), _controller);
 	_repliesRootView->setContent(rpl::combine(
 		RootViewContent(
 			_history,
@@ -619,7 +619,7 @@ bool TopControls::checkSponsoredMessageBarVisibility() const {
 	const auto reserved = _keyboardReservedHeight
 		? _keyboardReservedHeight()
 		: 0;
-	return (_list->height() - reserved > _scroll->height());
+	return (_list->height() - reserved > Ui::Glass::ChatReadingHeight(_scroll));
 }
 
 void TopControls::requestSponsoredMessageBar() {
@@ -822,7 +822,7 @@ void TopControls::checkPinnedBarState() {
 	_pinnedBar = std::make_unique<Ui::PinnedBar>(_topBars.get(), [=] {
 		return _controller->isGifPausedAtLeastFor(
 			Window::GifPauseReason::Any);
-	}, _controller->gifPauseLevelChanged());
+	}, _controller->gifPauseLevelChanged(), _controller);
 	auto pinnedRefreshed = Info::Profile::SharedMediaCountValue(
 		_history->peer,
 		topicRootId,
@@ -1187,6 +1187,8 @@ void TopControls::updateLayout() {
 	_topBars->resize(_width, top + st::lineWidth);
 	_wrap->resize(_width, top + st::lineWidth);
 	_height = top;
+	Ui::Glass::MaskOverlayChildren(_topBars.get());
+	Ui::Glass::MaskOverlayChildren(_wrap.get());
 }
 
 void TopControls::updateZOrder() {

@@ -8,11 +8,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/pinned_bar.h"
 
 #include "ui/chat/message_bar.h"
+#include "ui/power_saving.h"
 #include "ui/effects/spoiler_mess.h"
 #include "ui/widgets/shadow.h"
 #include "ui/widgets/buttons.h"
 #include "ui/wrap/fade_wrap.h"
 #include "styles/style_chat_helpers.h"
+#include "styles/style_fork_glass.h"
 #include "styles/palette.h"
 
 #include <QtGui/QtEvents>
@@ -22,10 +24,15 @@ namespace Ui {
 PinnedBar::PinnedBar(
 	not_null<QWidget*> parent,
 	Fn<bool()> customEmojiPaused,
-	rpl::producer<> customEmojiPausedChanges)
+	rpl::producer<> customEmojiPausedChanges,
+	Window::SessionController *controller)
 : _wrap(parent, object_ptr<RpWidget>(parent))
+, _controller(controller)
 , _shadow(std::make_unique<PlainShadow>(_wrap.parentWidget()))
 , _customEmojiPaused(std::move(customEmojiPaused)) {
+	if (_controller) {
+		_glassBackdrop = Glass::ObserveChatBackdrop(_wrap.entity(), _wrap.entity(), _controller, &_glass);
+	}
 	_wrap.hide(anim::type::instant);
 	_shadow->hide();
 
@@ -39,9 +46,28 @@ PinnedBar::PinnedBar(
 
 	_wrap.entity()->paintRequest(
 	) | rpl::on_next([=](QRect clip) {
-		QPainter(_wrap.entity()).fillRect(clip, st::historyPinnedBg);
+		auto p = QPainter(_wrap.entity());
+		if (Glass::Enabled()) {
+			_glass.paint(p, _wrap.entity()->rect().marginsRemoved(QMargins(
+				st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)),
+				st::historyPinnedBg->c);
+		} else {
+			p.fillRect(clip, st::historyPinnedBg);
+		}
 	}, lifetime());
-	_wrap.setAttribute(Qt::WA_OpaquePaintEvent);
+	_wrap.setAttribute(Qt::WA_OpaquePaintEvent, !Glass::Enabled());
+	Glass::EnabledValue() | rpl::on_next([=] {
+		_wrap.setAttribute(Qt::WA_OpaquePaintEvent, !Glass::Enabled());
+		if (_bar) {
+			_wrap.entity()->resize(_wrap.entity()->width(),
+				st::historyReplyHeight + (Glass::Enabled() ? 2 * st::glassGap : 0));
+			updateControlsGeometry(_wrap.geometry());
+		}
+		_wrap.entity()->update();
+	}, lifetime());
+	PowerSaving::Changes() | rpl::on_next([=] {
+		_wrap.entity()->update();
+	}, lifetime());
 
 	if (customEmojiPausedChanges) {
 		std::move(
@@ -133,9 +159,15 @@ void PinnedBar::setRightButton(object_ptr<Ui::RpWidget> button) {
 }
 
 void PinnedBar::updateControlsGeometry(QRect wrapGeometry) {
-	_bar->widget()->resizeToWidth(wrapGeometry.width());
+	const auto margin = Glass::Enabled() ? st::glassMargin : 0;
+	const auto gap = Glass::Enabled() ? st::glassGap : 0;
+	Glass::MaskCapsules(_wrap.entity(), { _wrap.entity()->rect().marginsRemoved(
+		QMargins(margin, gap, margin, gap)) });
+	Glass::MaskOverlayChildren(&_wrap);
+	_bar->widget()->resizeToWidth(wrapGeometry.width() - 2 * margin);
+	_bar->widget()->moveToLeft(margin, gap);
 	if (_right.button) {
-		_right.button->moveToRight(0, 0);
+		_right.button->moveToRight(margin, gap);
 	}
 }
 
@@ -149,7 +181,7 @@ void PinnedBar::updateShadowGeometry(QRect wrapGeometry) {
 		wrapGeometry.x(),
 		wrapGeometry.y() + wrapGeometry.height(),
 		wrapGeometry.width(),
-		st::lineWidth);
+		Glass::Enabled() ? 0 : st::lineWidth);
 	_shadow->setGeometry(_shadowGeometryPostprocess
 		? _shadowGeometryPostprocess(regular)
 		: regular);
@@ -196,7 +228,7 @@ void PinnedBar::createControls() {
 	_bar->widget()->show();
 	_wrap.entity()->resize(
 		_wrap.entity()->width(),
-		_bar->widget()->height());
+		_bar->widget()->height() + (Glass::Enabled() ? 2 * st::glassGap : 0));
 
 	_wrap.geometryValue(
 	) | rpl::on_next([=](QRect rect) {
@@ -266,7 +298,7 @@ int PinnedBar::height() const {
 	return !_forceHidden
 		? _wrap.height()
 		: _shouldBeShown
-		? st::historyReplyHeight
+		? st::historyReplyHeight + (Glass::Enabled() ? 2 * st::glassGap : 0)
 		: 0;
 }
 

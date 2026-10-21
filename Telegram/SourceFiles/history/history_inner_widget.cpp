@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_inner_widget.h"
 
+#include "ui/chat/glass_material.h"
+#include "ui/chat/glass_surface.h"
+
 #include "api/api_polls.h"
 #include "chat_helpers/stickers_emoji_pack.h"
 #include "core/application.h"
@@ -1414,14 +1417,17 @@ void HistoryInner::startEffectOnRead(not_null<HistoryItem*> item) {
 }
 
 void HistoryInner::paintEvent(QPaintEvent *e) {
+	const auto capturing = Ui::Glass::CapturingBackdrop();
 	const auto overlapped = _controller->contentOverlapped(this, e);
 	const auto pendingResized = hasPendingResizedItems();
-	_readMetricsTracker->setScreenActive(!overlapped
-		&& !pendingResized
-		&& _widget->markingContentsRead());
+	if (!capturing) {
+		_readMetricsTracker->setScreenActive(!overlapped
+			&& !pendingResized
+			&& _widget->markingContentsRead());
+	}
 	if (overlapped || pendingResized) {
 		return;
-	} else if (_recountedAfterPendingResizedItems) {
+	} else if (!capturing && _recountedAfterPendingResizedItems) {
 		_recountedAfterPendingResizedItems = false;
 		mouseActionUpdate();
 	}
@@ -1465,8 +1471,10 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 		return;
 	}
 
-	_translateTracker->startBunch();
-	const auto metricsStale = base::take(_readMetricsStale);
+	if (!capturing) {
+		_translateTracker->startBunch();
+	}
+	const auto metricsStale = !capturing && base::take(_readMetricsStale);
 	if (metricsStale) {
 		_readMetricsTracker->startBatch(_visibleAreaTop, _visibleAreaBottom);
 	}
@@ -1476,6 +1484,10 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 	auto startInteractions = base::flat_set<not_null<const Element*>>();
 	const auto markingAsViewed = _widget->markingContentsRead();
 	const auto guard = gsl::finally([&] {
+		if (capturing) {
+			_userpicsCache.clear();
+			return;
+		}
 		if (_pinnedItem) {
 			_translateTracker->add(_pinnedItem);
 		}
@@ -1507,6 +1519,9 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			not_null<Element*> view,
 			int top,
 			int height) {
+		if (capturing) {
+			return;
+		}
 		_translateTracker->add(view);
 		const auto item = view->data();
 		if (metricsStale && height > 0) {
@@ -1610,8 +1625,9 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			}
 
 			const auto height = view->height();
-			context.reactionInfo
-				= _reactionsManager->currentReactionPaintInfo();
+			context.reactionInfo = capturing
+				? nullptr
+				: _reactionsManager->currentReactionPaintInfo().get();
 			context.outbg = view->hasOutLayout();
 			const auto selection = itemRenderSelection(
 				view,
@@ -1679,8 +1695,9 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 			if ((context.clip.y() < height)
 				&& (hdrawtop < top + height)
 				&& !sendingAnimation.hasAnimatedMessage(item)) {
-				context.reactionInfo
-					= _reactionsManager->currentReactionPaintInfo();
+				context.reactionInfo = capturing
+					? nullptr
+					: _reactionsManager->currentReactionPaintInfo().get();
 				context.outbg = view->hasOutLayout();
 				const auto selection = itemRenderSelection(
 					view,
@@ -2828,7 +2845,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				this,
 				_controller->uiShow(),
 				item->fullId(),
-				parentWidget()->mapToGlobal(QPoint(right, top)));
+				mapToGlobal(QPoint(right, top + _visibleAreaTop)));
 			return;
 		}
 	}
@@ -4478,7 +4495,7 @@ void HistoryInner::recountHistoryGeometry(bool initial) {
 		_recountedAfterPendingResizedItems = true;
 	}
 	const auto aboutAboveHistory = _aboutView && _aboutView->aboveHistory();
-	const auto visibleHeight = _scroll->height();
+	const auto visibleHeight = Ui::Glass::ChatReadingHeight(_scroll);
 	auto oldHistoryMarginTop = std::max(
 		visibleHeight - historyHeight() - _historyMarginBottom,
 		0);
@@ -4535,10 +4552,10 @@ void HistoryInner::recountHistoryGeometry(bool initial) {
 		if (aboutAboveHistory) {
 			_aboutView->top = std::min(
 				_historyMarginTop - _aboutView->height,
-				std::max(0, (_scroll->height() - _aboutView->height) / 2));
+				std::max(0, (Ui::Glass::ChatReadingHeight(_scroll) - _aboutView->height) / 2));
 		} else {
 			_aboutView->top = std::max(
-				std::max(0, (_scroll->height() - _aboutView->height) / 2),
+				std::max(0, (Ui::Glass::ChatReadingHeight(_scroll) - _aboutView->height) / 2),
 				_historyMarginTop + historyHeight() - _historyMarginBottom);
 		}
 	} else if (_aboutView) {
@@ -4771,7 +4788,7 @@ void HistoryInner::updateSize() {
 	if (_thanosController) {
 		_thanosController->flushRemovals(historyHeight() - _revealHeight);
 	}
-	const auto visibleHeight = _scroll->height();
+	const auto visibleHeight = Ui::Glass::ChatReadingHeight(_scroll);
 	auto collapseGapTotal = 0;
 	for (const auto &gap : collapseGaps()) {
 		collapseGapTotal += gap.height;
@@ -4794,10 +4811,10 @@ void HistoryInner::updateSize() {
 		if (aboutAboveHistory) {
 			_aboutView->top = std::min(
 				newHistoryMarginTop - _aboutView->height,
-				std::max(0, (_scroll->height() - _aboutView->height) / 2));
+				std::max(0, (Ui::Glass::ChatReadingHeight(_scroll) - _aboutView->height) / 2));
 		} else {
 			_aboutView->top = std::max(
-				std::max(0, (_scroll->height() - _aboutView->height) / 2),
+				std::max(0, (Ui::Glass::ChatReadingHeight(_scroll) - _aboutView->height) / 2),
 				(newHistoryMarginTop
 					+ itemsHeight
 					+ newHistoryMarginBottom
@@ -5765,7 +5782,7 @@ void HistoryInner::mouseActionUpdate() {
 		_selectScroll.checkDeltaScroll(
 			mousePos,
 			_scroll->scrollTop(),
-			_scroll->scrollTop() + _scroll->height());
+			_scroll->scrollTop() + Ui::Glass::ChatReadingHeight(_scroll));
 	} else {
 		updateDragSelection(nullptr, nullptr, false);
 		_selectScroll.cancel();

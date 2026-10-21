@@ -44,6 +44,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_chat.h"
 #include "settings/settings_experimental.h"
 #include "settings/settings_power_saving.h"
+#include "ui/chat/glass_surface.h"
 #include "settings/sections/settings_privacy_security.h"
 #include "storage/localstorage.h"
 #include "storage/storage_domain.h"
@@ -916,6 +917,20 @@ void BuildPerformanceSection(SectionBuilder &builder) {
 		},
 		.keywords = { u"power"_q, u"saving"_q, u"battery"_q, u"animation"_q },
 	});
+
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+	const auto glass = builder.addCheckbox({
+		.id = u"advanced/liquid_glass"_q,
+		.title = tr::lng_settings_liquid_glass(),
+		.checked = Ui::Glass::Enabled(),
+		.keywords = { u"glass"_q, u"appearance"_q, u"translucency"_q },
+	});
+	if (glass) {
+		glass->checkedChanges() | rpl::on_next([](bool enabled) {
+			Ui::Glass::SetEnabled(enabled);
+		}, glass->lifetime());
+	}
+#endif
 
 	const auto hwAccel = builder.addButton({
 		.id = u"advanced/hw_accel"_q,

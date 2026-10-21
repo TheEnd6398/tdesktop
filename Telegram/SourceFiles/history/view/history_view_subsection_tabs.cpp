@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_subsection_tabs.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+#include "ui/chat/glass_surface.h"
 #include "apiwrap.h"
 #include "base/qt/qt_key_modifiers.h"
 #include "core/ui_integration.h"
@@ -43,6 +45,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_separate_id.h"
 #include "window/window_session_controller.h"
 #include "styles/style_chat.h"
+#include "styles/style_fork_glass.h"
 
 namespace HistoryView {
 namespace {
@@ -128,7 +131,7 @@ void SubsectionTabs::setupHorizontal(
 	toggle->move(0, 0);
 	const auto scroll = Ui::CreateChild<Ui::ScrollArea>(
 		widget,
-		st::chatTabsScroll,
+		Ui::Glass::TransparentScrollStyle(st::chatTabsScroll, widget->lifetime()),
 		true);
 	scroll->show();
 	const auto shadow = Ui::CreateChild<Ui::PlainShadow>(widget);
@@ -144,9 +147,13 @@ void SubsectionTabs::setupHorizontal(
 	) | rpl::map([=] { return scroll->scrollLeft() > 0; }));
 	shadow->setAttribute(Qt::WA_TransparentForMouseEvents);
 
-	widget->resize(
-		widget->width(),
-		std::max(toggle->height(), slider->height()));
+	struct GlassState {
+		Ui::Glass::Surface surface;
+		std::unique_ptr<QObject> backdrop;
+	};
+	const auto glass = widget->lifetime().make_state<GlassState>();
+	glass->backdrop = Ui::Glass::ObserveChatBackdrop(widget, widget,
+		_controller, &glass->surface);
 
 	scroll->setCustomWheelProcess([=](not_null<QWheelEvent*> e) {
 		const auto pixelDelta = e->pixelDelta();
@@ -154,21 +161,43 @@ void SubsectionTabs::setupHorizontal(
 		if (std::abs(pixelDelta.x()) + std::abs(angleDelta.x())) {
 			return false;
 		}
+		if (Ui::ProcessSmoothWheelScroll(scroll, e, true)) return true;
 		const auto y = pixelDelta.y() ? pixelDelta.y() : angleDelta.y();
 		scroll->scrollToX(scroll->scrollLeft() - y);
 		return true;
 	});
 
-	widget->sizeValue(
-	) | rpl::on_next([=](QSize size) {
+	const auto layout = [=] {
+		const auto enabled = Ui::Glass::Enabled();
+		const auto margin = enabled ? st::glassMargin : 0;
+		const auto gap = enabled ? st::glassGap : 0;
 		const auto togglew = toggle->width();
-		const auto height = size.height();
-		scroll->setGeometry(togglew, 0, size.width() - togglew, height);
-		shadow->setGeometry(togglew, 0, st::lineWidth, height);
+		const auto height = std::max(0, widget->height() - 2 * gap);
+		toggle->move(margin, gap);
+		scroll->setGeometry(margin + togglew, gap,
+			std::max(0, widget->width() - 2 * margin - togglew), height);
+		shadow->setGeometry(margin + togglew, gap, enabled ? 0 : st::lineWidth, height);
+		Ui::Glass::MaskCapsules(widget, { widget->rect().marginsRemoved(
+			QMargins(margin, gap, margin, gap)) });
+	};
+	widget->sizeValue() | rpl::on_next([=](QSize) {
+		layout();
 	}, scroll->lifetime());
+	Ui::Glass::EnabledValue() | rpl::on_next([=] {
+		widget->resize(widget->width(), std::max(toggle->height(), slider->height())
+			+ (Ui::Glass::Enabled() ? 2 * st::glassGap : 0));
+		layout();
+		widget->update();
+		_layoutRequests.fire({});
+	}, widget->lifetime());
 
 	widget->paintRequest() | rpl::on_next([=](QRect clip) {
 		auto p = QPainter(widget);
+		if (Ui::Glass::Enabled()) {
+			glass->surface.paint(p, widget->rect().marginsRemoved(QMargins(
+				st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)), st::windowBg->c);
+			return;
+		}
 
 		const auto line = st::lineWidth;
 		p.fillRect(
@@ -699,7 +728,7 @@ void SubsectionTabs::setBoundingRect(QRect boundingRect) {
 			boundingRect.x(),
 			_horizontal->y() + _horizontal->height() - st::lineWidth,
 			boundingRect.width(),
-			st::lineWidth);
+			Ui::Glass::Enabled() ? 0 : st::lineWidth);
 	} else if (_vertical) {
 		_vertical->setGeometry(
 			boundingRect.x(),
@@ -722,7 +751,7 @@ void SubsectionTabs::setBoundingRect(QRect boundingRect) {
 			boundingRect.x(),
 			_bottom->y(),
 			boundingRect.width(),
-			st::lineWidth);
+			Ui::Glass::Enabled() ? 0 : st::lineWidth);
 	}
 }
 
@@ -735,11 +764,13 @@ int SubsectionTabs::leftSkip() const {
 }
 
 int SubsectionTabs::topSkip() const {
-	return _horizontal ? (_horizontal->height() - st::lineWidth) : 0;
+	return _horizontal ? (_horizontal->height()
+		- (Ui::Glass::Enabled() ? 0 : st::lineWidth)) : 0;
 }
 
 int SubsectionTabs::bottomSkip() const {
-	return _bottom ? (_bottom->height() - st::lineWidth) : 0;
+	return _bottom ? (_bottom->height()
+		- (Ui::Glass::Enabled() ? 0 : st::lineWidth)) : 0;
 }
 
 void SubsectionTabs::raise() {

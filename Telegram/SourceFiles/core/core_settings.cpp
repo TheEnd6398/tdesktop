@@ -1347,7 +1347,7 @@ void Settings::writePrefGeneric(
 }
 
 std::optional<QByteArray> Settings::readPrefGeneric(std::string_view key) {
-	const auto i = _prefs.find(QByteArray(key.data(), key.size()));
+	const auto i = _prefs.find(QByteArray::fromRawData(key.data(), key.size()));
 	return (i != end(_prefs)) ? i->second : std::optional<QByteArray>();
 }
 

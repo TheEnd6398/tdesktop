@@ -484,9 +484,11 @@ void Application::run() {
 }
 
 void Application::autoRegisterUrlScheme() {
+#if !defined Q_OS_WIN || !defined TDESKTOP_FORK_LIQUID_GLASS || defined OS_WIN_STORE
 	if (!OptionSkipUrlSchemeRegister.value()) {
 		InvokeQueued(this, [] { RegisterUrlScheme(); });
 	}
+#endif
 }
 
 void Application::showAccount(not_null<Main::Account*> account) {

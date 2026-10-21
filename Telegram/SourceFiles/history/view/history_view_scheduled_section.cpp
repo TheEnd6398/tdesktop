@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_scheduled_section.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
 #include "history/view/controls/history_view_compose_controls.h"
 #include "history/view/history_view_empty_list_bubble.h"
 #include "history/view/history_view_top_bar_widget.h"
@@ -203,6 +205,12 @@ ScheduledWidget::ScheduledWidget(
 
 	_topBar->move(0, 0);
 	_topBar->resizeToWidth(width());
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		InvokeQueued(this, [=] {
+			updateControlsGeometry();
+			update();
+		});
+	}, lifetime());
 	_topBar->show();
 
 	_topBar->sendNowSelectionRequest(
@@ -225,14 +233,17 @@ ScheduledWidget::ScheduledWidget(
 	}, lifetime());
 
 	_scroll->setHandleTouch(false);
-	_inner = _scroll->setOwnedWidget(object_ptr<ListWidget>(
+	auto content = object_ptr<ListWidget>(
 		this,
 		&controller->session(),
-		static_cast<ListDelegate*>(this)));
+		static_cast<ListDelegate*>(this));
+	_inner = content.data();
+	_scroll->setOwnedWidget(Ui::Glass::WrapChatContent(std::move(content)));
 	_inner->lower();
 	_scroll->move(0, _topBar->height());
 	_scroll->show();
 	_scroll->setOverscrollBg(QColor(0, 0, 0, 0));
+	Ui::SetupSmoothWheelScroll(_scroll.get());
 	_scroll->setOverscrollEdges([=] {
 		return _inner->loadedAtTopKnown() && _inner->loadedAtTop();
 	}, [=] {
@@ -1178,18 +1189,18 @@ void ScheduledWidget::updateControlsGeometry() {
 		? std::nullopt
 		: base::make_optional(_scroll->scrollTop() + takeTopDelta());
 	_topBar->resizeToWidth(contentWidth);
-	_topBarShadow->resize(contentWidth, st::lineWidth);
+	_topBarShadow->resize(contentWidth, Ui::Glass::Enabled() ? 0 : st::lineWidth);
 
 	const auto bottom = height();
 	const auto controlsHeight = _composeControls->heightCurrent();
 	const auto scrollHeight = bottom - _topBar->height() - controlsHeight;
-	const auto scrollSize = QSize(contentWidth, scrollHeight);
-	if (_scroll->size() != scrollSize) {
-		_skipScrollEvent = true;
-		_scroll->resize(scrollSize);
-		_inner->resizeToWidth(scrollSize.width(), _scroll->height());
-		_skipScrollEvent = false;
-	}
+	_skipScrollEvent = true;
+	Ui::Glass::SetChatReadingGeometry(_scroll.get(),
+		QRect(0, _topBar->height(), contentWidth, scrollHeight),
+		Ui::Glass::Enabled() ? _topBar->height() : 0,
+		Ui::Glass::Enabled() ? controlsHeight : 0);
+	_inner->resizeToWidth(contentWidth, scrollHeight);
+	_skipScrollEvent = false;
 	if (!_scroll->isHidden()) {
 		if (newScrollTop) {
 			_scroll->scrollToY(*newScrollTop);
@@ -1197,7 +1208,7 @@ void ScheduledWidget::updateControlsGeometry() {
 		updateInnerVisibleArea();
 	}
 	_composeControls->move(0, bottom - controlsHeight);
-	_composeControls->setAutocompleteBoundingRect(_scroll->geometry());
+	_composeControls->setAutocompleteBoundingRect(Ui::Glass::ChatReadingRect(_scroll.get()));
 
 	_cornerButtons.updatePositions();
 }
@@ -1232,7 +1243,7 @@ void ScheduledWidget::updateInnerVisibleArea() {
 		checkReplyReturns();
 	}
 	const auto scrollTop = _scroll->scrollTop();
-	const auto scrollBottom = scrollTop + _scroll->height();
+	const auto scrollBottom = scrollTop + Ui::Glass::ChatReadingHeight(_scroll.get());
 	_inner->setVisibleTopBottom(scrollTop, scrollBottom);
 	_cornerButtons.updateJumpDownVisibility();
 	_cornerButtons.updateUnreadThingsVisibility();
@@ -1406,7 +1417,7 @@ bool ScheduledWidget::floatPlayerHandleWheelEvent(QEvent *e) {
 }
 
 QRect ScheduledWidget::floatPlayerAvailableRect() {
-	return mapToGlobal(_scroll->geometry());
+	return mapToGlobal(Ui::Glass::ChatReadingRect(_scroll.get()));
 }
 
 Context ScheduledWidget::listContext() {
@@ -1414,6 +1425,7 @@ Context ScheduledWidget::listContext() {
 }
 
 bool ScheduledWidget::listScrollTo(int top, bool syntetic) {
+	Ui::ResetSmoothWheelScroll(_scroll.get());
 	top = std::clamp(top, 0, _scroll->scrollTopMax());
 	if (_scroll->scrollTop() == top) {
 		updateInnerVisibleArea();

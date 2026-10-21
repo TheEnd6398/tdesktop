@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_top_bar_widget.h"
 
+#include <cmath>
 #include "history/history.h"
 #include "history/view/history_view_send_action.h"
 #include "boxes/add_contact_box.h"
@@ -41,6 +42,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "window/window_adaptive.h"
 #include "window/window_session_controller.h"
+#include "window/section_widget.h"
+#include "ui/power_saving.h"
 #include "window/window_peer_menu.h"
 #include "calls/calls_instance.h"
 #include "data/stickers/data_custom_emoji.h"
@@ -69,8 +72,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_dialogs.h"
 #include "styles/style_chat.h"
 #include "styles/style_info.h"
+#include "styles/style_fork_glass.h"
 
 #include <QtGui/QWindow>
+#include <QtGui/QPainterPath>
 
 namespace HistoryView {
 namespace {
@@ -130,7 +135,25 @@ TopBarWidget::TopBarWidget(
 , _menuToggle(this, st::topBarMenuToggle)
 , _titlePeerText(st::windowMinWidth / 3)
 , _onlineUpdater([=] { updateOnlineDisplay(); }) {
-	setAttribute(Qt::WA_OpaquePaintEvent);
+	_glassBackdrop = Ui::Glass::ObserveChatBackdrop(this, this, _controller, &_glass);
+	setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
+	Ui::Glass::EnabledValue() | rpl::on_next([=] {
+		_glassActionsWidth.stop();
+		setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
+		resizeToWidth(width());
+		updateControlsGeometry();
+		update();
+	}, lifetime());
+	PowerSaving::Changes() | rpl::on_next([=] {
+		_glassActionsWidth.stop();
+		updateControlsGeometry();
+		update();
+	}, lifetime());
+	for (const auto button : { _back.data(), _cancelChoose.data(),
+		_call.data(), _groupCall.data(), _search.data(),
+		_infoToggle.data(), _menuToggle.data() }) {
+		Ui::Glass::BindButtonFeedback(button);
+	}
 
 	_clear->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
 	_forward->setTextTransform(Ui::RoundButtonTextTransform::ToUpper);
@@ -517,7 +540,7 @@ bool TopBarWidget::eventFilter(QObject *obj, QEvent *e) {
 }
 
 int TopBarWidget::resizeGetHeight(int newWidth) {
-	return st::topBarHeight;
+	return st::topBarHeight + (Ui::Glass::Enabled() ? 2 * st::glassGap : 0);
 }
 
 void TopBarWidget::paintEvent(QPaintEvent *e) {
@@ -534,10 +557,61 @@ void TopBarWidget::paintEvent(QPaintEvent *e) {
 		: -st::topBarHeight;
 	const auto slidingTop = std::max(selectedButtonsTop, searchFieldTop);
 
-	p.fillRect(QRect(0, 0, width(), st::topBarHeight), st::topBarBg);
+	if (Ui::Glass::Enabled()) {
+		paintGlass(p);
+		p.translate(0, st::glassGap);
+	} else {
+		p.fillRect(QRect(0, 0, width(), st::topBarHeight), st::topBarBg);
+	}
 	if (slidingTop < 0) {
 		p.translate(0, slidingTop + st::topBarHeight);
 		paintTopBar(p);
+	}
+}
+
+QRect TopBarWidget::glassTitleRect() const {
+	const auto left = (_back->isHidden() && _cancelChoose->isHidden())
+		? st::glassMargin
+		: st::glassMargin + _back->width() + st::glassGap;
+	return myrtlrect(
+		left,
+		st::glassGap,
+		std::max(0, width() - left - _rightTaken - st::glassGap
+			- glassActionsRect().width() + glassActionsRect(false).width()),
+		st::topBarHeight);
+}
+
+QRect TopBarWidget::glassActionsRect(bool animated) const {
+	auto result = QRect();
+	for (const auto button : { _call.data(), _groupCall.data(),
+		_search.data(), _infoToggle.data(), _menuToggle.data() }) {
+		if (!button->isHidden()) {
+			result = result.united(button->geometry());
+		}
+	}
+	if (animated && _glassActionsWidth.animating() && !result.isEmpty()) {
+		const auto size = int(std::round(_glassActionsWidth.value(result.width())));
+		if (style::RightToLeft()) result.setRight(result.left() + size - 1);
+		else result.setLeft(result.right() - size + 1);
+	}
+	return result;
+}
+
+void TopBarWidget::paintGlass(Painter &p) {
+	if (showSelectedActions() || _searchMode || _selectedShown.animating()
+		|| _searchShown.animating() || _chooseForReportReason) {
+		_glass.paint(p, rect().marginsRemoved(QMargins(
+			st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)),
+			st::topBarBg->c);
+		return;
+	}
+	_glass.paint(p, glassTitleRect(), st::topBarBg->c);
+	_glass.paint(p, glassActionsRect(), st::topBarBg->c);
+	for (const auto button : { _back.data(), _cancelChoose.data() }) {
+		if (!button->isHidden()) {
+			_glass.paint(p, Ui::Glass::ButtonRect(button->geometry()),
+				st::topBarBg->c);
+		}
 	}
 }
 
@@ -552,7 +626,10 @@ void TopBarWidget::paintTopBar(Painter &p) {
 	auto namewidth = width()
 		- _rightTaken
 		- nameleft
-		- st::topBarNameRightPadding;
+		- st::topBarNameRightPadding
+		- (Ui::Glass::Enabled()
+			? st::glassGap + glassActionsRect().width() - glassActionsRect(false).width()
+			: 0);
 	auto statuswidth = namewidth;
 
 	if (_chooseForReportReason) {
@@ -635,7 +712,7 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			p.setFont(st::historySavedFont);
 			p.drawTextLeft(
 				nameleft,
-				(height() - st::historySavedFont->height) / 2,
+				(st::topBarHeight - st::historySavedFont->height) / 2,
 				width(),
 				text);
 			p.setOpacity(1.);
@@ -826,12 +903,23 @@ QRect TopBarWidget::getMembersShowAreaGeometry() const {
 	int membersTextWidth = _titlePeerText.maxWidth();
 	int membersTextHeight = st::topBarHeight - membersTextTop;
 
-	return myrtlrect(membersTextLeft, membersTextTop, membersTextWidth, membersTextHeight);
+	return myrtlrect(membersTextLeft,
+		membersTextTop + (Ui::Glass::Enabled() ? st::glassGap : 0),
+		membersTextWidth, membersTextHeight);
 }
 
 void TopBarWidget::mousePressEvent(QMouseEvent *e) {
+	if (Ui::Glass::Enabled() && !_animatingMode) {
+		auto title = QPainterPath();
+		const auto rect = QRectF(glassTitleRect());
+		title.addRoundedRect(rect, rect.height() / 2., rect.height() / 2.);
+		if (!title.contains(e->position())) {
+			return;
+		}
+	}
 	const auto handleClick = (e->button() == Qt::LeftButton)
-		&& (e->pos().y() < st::topBarHeight)
+		&& (e->pos().y() < st::topBarHeight
+			+ (Ui::Glass::Enabled() ? st::glassGap : 0))
 		&& !showSelectedState()
 		&& !_chooseForReportReason;
 	if (handleClick) {
@@ -1100,6 +1188,7 @@ void TopBarWidget::refreshInfoButton() {
 
 void TopBarWidget::resizeEvent(QResizeEvent *e) {
 	updateSearchVisibility();
+	updateInfoButtonVisibility();
 	updateControlsGeometry();
 }
 
@@ -1126,8 +1215,11 @@ void TopBarWidget::updateInfoButtonVisibility() {
 	}
 	const auto shown = (communityChatsListBar() && !rootChatsListBar())
 		? communityUserpicShown()
-		: (_controller->adaptive().isOneColumn() || !_primaryWindow);
-	_info->setVisible(!_chooseForReportReason && shown);
+		: (Ui::Glass::Enabled()
+			|| _controller->adaptive().isOneColumn()
+			|| !_primaryWindow);
+	_info->setVisible(!_chooseForReportReason && shown
+		&& (!Ui::Glass::Enabled() || width() >= st::glassCompactWidth));
 }
 
 void TopBarWidget::updateControlsGeometry() {
@@ -1146,9 +1238,12 @@ void TopBarWidget::updateControlsGeometry() {
 	auto searchFieldTop = _searchField
 		? countSelectedButtonsTop(_searchShown.value(_searchMode ? 1. : 0.))
 		: -st::topBarHeight;
+	const auto glass = Ui::Glass::Enabled();
+	const auto margin = glass ? st::glassMargin : 0;
+	const auto gap = glass ? st::glassGap : 0;
 	const auto otherButtonsTop = std::max(selectedButtonsTop, searchFieldTop)
-		+ st::topBarHeight;
-	const auto backButtonTop = selectedButtonsTop + st::topBarHeight;
+		+ st::topBarHeight + gap;
+	const auto backButtonTop = selectedButtonsTop + st::topBarHeight + gap;
 	auto buttonsLeft = st::topBarActionSkip
 		+ (_controller->adaptive().isOneColumn() ? 0 : st::lineWidth);
 	auto buttonsWidth = (_forward->isHidden() ? 0 : _forward->contentWidth())
@@ -1211,18 +1306,22 @@ void TopBarWidget::updateControlsGeometry() {
 	_clear->moveToRight(st::topBarActionSkip, selectedButtonsTop);
 
 	if (!_cancelChoose->isHidden()) {
-		_leftTaken = 0;
+		_leftTaken = margin;
 		_cancelChoose->moveToLeft(_leftTaken, otherButtonsTop);
 		_leftTaken += _cancelChoose->width();
 	} else if (_back->isHidden()) {
-		_leftTaken = st::topBarArrowPadding.right();
+		_leftTaken = st::topBarArrowPadding.right() + margin;
 	} else {
 		_leftTaken = anim::interpolate(
-			0,
+			margin,
 			(_narrowWidth - _back->width()) / 2,
 			_narrowRatio);
 		_back->moveToLeft(_leftTaken, backButtonTop);
 		_leftTaken += _back->width();
+		_leftTaken += gap;
+		if (glass && (!_info || _info->isHidden())) {
+			_leftTaken += st::glassMargin;
+		}
 	}
 	if (_info && !_info->isHidden()) {
 		if (_back->isHidden() && _narrowRatio > 0.) {
@@ -1269,7 +1368,7 @@ void TopBarWidget::updateControlsGeometry() {
 		updateSearchJumpToDateVisibility();
 	}
 
-	_rightTaken = 0;
+	_rightTaken = margin;
 	if (rootChatsListBar() && _activeChat.key.folder()) {
 		const auto &toggle = st::topBarMenuToggle;
 		const auto narrowLeft = (_narrowWidth - toggle.icon.width()) / 2
@@ -1283,10 +1382,10 @@ void TopBarWidget::updateControlsGeometry() {
 	} else {
 		_menuToggle->moveToRight(_rightTaken, otherButtonsTop);
 	}
-	if (_menuToggle->isHidden()) {
+	if (_menuToggle->isHidden() && !glass) {
 		_rightTaken += (_menuToggle->width() - _search->width());
-	} else {
-		_rightTaken += _menuToggle->width() + st::topBarSkip;
+	} else if (!_menuToggle->isHidden()) {
+		_rightTaken += _menuToggle->width() + (glass ? 0 : st::topBarSkip);
 	}
 	_infoToggle->moveToRight(_rightTaken, otherButtonsTop);
 	if (!_infoToggle->isHidden()) {
@@ -1300,10 +1399,48 @@ void TopBarWidget::updateControlsGeometry() {
 	}
 	_search->moveToRight(_rightTaken, otherButtonsTop);
 	if (!_search->isHidden()) {
-		_rightTaken += _search->width() + st::topBarCallSkip;
+		_rightTaken += _search->width() + (glass ? 0 : st::topBarCallSkip);
+	}
+
+	const auto actionsWidth = glassActionsRect(false).width();
+	if (actionsWidth != _glassActionsTargetWidth) {
+		const auto previous = _glassActionsWidth.value(_glassActionsTargetWidth);
+		const auto animate = glass && _glassActionsTargetWidth && actionsWidth
+			&& !anim::Disabled() && !PowerSaving::On(PowerSaving::kAnimations);
+		_glassActionsTargetWidth = actionsWidth;
+		if (animate) {
+			_glassActionsWidth.start([=] { updateControlsGeometry(); update(); },
+				previous, actionsWidth, crl::time(140), anim::easeOutCubic);
+		} else {
+			_glassActionsWidth.stop();
+		}
+	}
+
+	if (glass) {
+		auto areas = std::vector<QRect>{ glassTitleRect(), glassActionsRect() };
+		if (showSelectedActions() || _searchMode || _selectedShown.animating()
+			|| _searchShown.animating() || _chooseForReportReason) {
+			areas = { rect().marginsRemoved(QMargins(margin, gap, margin, gap)) };
+		} else {
+			for (const auto button : { _back.data(), _cancelChoose.data() }) {
+				if (!button->isHidden()) areas.push_back(Ui::Glass::ButtonRect(button->geometry()));
+			}
+		}
+		Ui::Glass::MaskCapsules(this, areas);
+	} else {
+		clearMask();
 	}
 
 	updateMembersShowArea();
+	for (const auto button : { _back.data(), _cancelChoose.data(),
+		_call.data(), _groupCall.data(), _search.data(),
+		_infoToggle.data(), _menuToggle.data() }) {
+		if (glass) {
+			button->setMask(QRegion(Ui::Glass::ButtonRect(button->rect()), QRegion::Ellipse));
+		} else {
+			button->clearMask();
+		}
+	}
 }
 
 void TopBarWidget::finishAnimating() {
@@ -1315,7 +1452,8 @@ void TopBarWidget::finishAnimating() {
 void TopBarWidget::setAnimatingMode(bool enabled) {
 	if (_animatingMode != enabled) {
 		_animatingMode = enabled;
-		setAttribute(Qt::WA_OpaquePaintEvent, !_animatingMode);
+		setAttribute(Qt::WA_OpaquePaintEvent,
+			!_animatingMode && !Ui::Glass::Enabled());
 		finishAnimating();
 	} else if (!enabled) {
 		finishAnimating();
@@ -1546,7 +1684,7 @@ bool TopBarWidget::toggleSearch(bool shown, anim::type animated) {
 	}
 	_searchMode = shown;
 	if (shown && !_searchField) {
-		_searchField.create(this, st::dialogsFilter, tr::lng_dlg_filter());
+		_searchField.create(this, Ui::Glass::FieldStyle(st::dialogsFilter, lifetime()), tr::lng_dlg_filter());
 		_searchField->setFocusPolicy(Qt::StrongFocus);
 		_searchField->customUpDown(true);
 		_searchField->show();

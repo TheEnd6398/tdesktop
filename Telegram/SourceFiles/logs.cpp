@@ -413,9 +413,11 @@ void start() {
 	}
 
 #ifdef Q_OS_WIN
+#if !defined TDESKTOP_FORK_LIQUID_GLASS || defined OS_WIN_STORE
 	if (cWorkingDir() == psAppDataPath()) { // fix old "Telegram Win (Unofficial)" version
 		MoveOldDataFiles(psAppDataPathOld());
 	}
+#endif
 #elif !defined Q_OS_MAC && !defined _DEBUG // fix first version
 	MoveOldDataFiles(launcher.initialWorkingDir());
 #endif

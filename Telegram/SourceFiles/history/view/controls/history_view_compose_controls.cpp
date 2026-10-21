@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/controls/history_view_compose_controls.h"
 
+#include "styles/style_fork_glass.h"
+
 #include "history/view/controls/history_view_bot_menu_button.h"
 
 #include "base/call_delayed.h"
@@ -395,7 +397,9 @@ void FieldHeader::init() {
 	) | rpl::on_next([=] {
 		Painter p(this);
 		p.setInactive(_show->paused(Window::GifPauseReason::Any));
-		p.fillRect(rect(), st::historyComposeAreaBg);
+		if (!Ui::Glass::Enabled()) {
+			p.fillRect(rect(), st::historyComposeAreaBg);
+		}
 
 		const auto position = st::historyReplyIconPosition;
 		if (_suggestOptions) {
@@ -1250,7 +1254,7 @@ ComposeControls::ComposeControls(
 , _field(
 	Ui::CreateChild<Ui::InputField>(
 		_wrap.get(),
-		_st.field,
+		Ui::Glass::FieldStyle(_st.field, _wrap->lifetime()),
 		Ui::InputField::Mode::MultiLine,
 		tr::lng_message_ph()))
 , _richDraftPreview(std::make_unique<Controls::RichDraftPreview>(
@@ -1447,6 +1451,24 @@ ComposeControls::ComposeControls(
 			updateControlsGeometry(_wrap->size());
 		}
 	}, _sessionLifetime);
+	if (!_backgroundRect) {
+		if (_regularWindow) {
+			_glassBackdrop = Ui::Glass::ObserveChatBackdrop(_wrap.get(), _wrap.get(), _regularWindow, &_glass);
+		}
+		if (_attachToggle) {
+			Ui::Glass::BindButtonFeedback(_attachToggle);
+		}
+		Ui::Glass::BindButtonFeedback(_tabbedSelectorToggle);
+	}
+
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		updateHeight();
+		updateControlsGeometry(_wrap->size());
+		_wrap->update();
+	}, _wrap->lifetime());
+	PowerSaving::Changes() | rpl::on_next([=] {
+		_wrap->update();
+	}, _wrap->lifetime());
 }
 
 rpl::producer<> ComposeControls::showScheduledRequests() const {
@@ -3269,7 +3291,11 @@ void ComposeControls::initField() {
 		}
 		return false;
 	});
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+	InitMessageFieldFade(_field, st::transparent);
+#else
 	InitMessageFieldFade(_field, _st.field.textBg);
+#endif
 	_field->setEditLinkCallback(
 		DefaultEditLinkCallback(_show, _field, &_st.boxField));
 	_field->setEditLanguageCallback(DefaultEditLanguageCallback(_show));
@@ -5024,12 +5050,17 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	// (_commentsShown) (_attachToggle|_replaceMedia) (_sendAs) -- _inlineResults ------ _tabbedPanel -- _fieldBarCancel (_starsReaction)
 	// (_attachDocument|_attachPhoto) _field (_ttlInfo) (_scheduled) (_silent|_botCommandStart) _tabbedSelectorToggle _send
 
+	const auto glass = Ui::Glass::Enabled() && !_backgroundRect;
+	const auto margin = glass ? st::glassMargin : 0;
+	const auto gap = glass ? st::glassGap : 0;
 	const auto oldComposeHeight = composeFieldHeight();
 	const auto commentsShown = _commentsShown
 		&& !_commentsShown->isHidden();
 	const auto giftToUser = _giftToUser
 		&& !_giftToUser->isHidden();
 	const auto fieldWidth = size.width()
+		- 2 * margin
+		- (glass ? 2 * (st::glassGap + st::glassInset) : 0)
 		- (commentsShown
 			? (_commentsShown->width() + _st.commentsSkip)
 			: 0)
@@ -5077,9 +5108,11 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		}
 	}
 
-	const auto buttonsTop = size.height() - _st.attach.height;
+	const auto buttonsTop = size.height() - _st.attach.height - gap
+		- (glass ? (_st.field.heightMin + _st.padding.top()
+			+ _st.padding.bottom() - _st.attach.height) / 2 : 0);
 
-	auto left = 0;
+	auto left = margin;
 	if (commentsShown) {
 		_commentsShown->moveToLeft(left, buttonsTop);
 		left += _commentsShown->width() + _st.commentsSkip;
@@ -5102,7 +5135,8 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		left += _sendAs->width();
 	}
 	const auto fieldHeight = composeFieldHeight();
-	const auto fieldTop = size.height() - _st.padding.bottom() - fieldHeight;
+	const auto fieldTop = size.height() - _st.padding.bottom() - fieldHeight - gap;
+	left += glass ? st::glassGap + st::glassInset : 0;
 	_field->moveToLeft(left, fieldTop);
 	if (_richDraftPreview) {
 		_richDraftPreview->moveToLeft(left, fieldTop);
@@ -5112,12 +5146,12 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		_fieldDisabled->moveToLeft(left, fieldTop);
 	}
 
-	_header->resizeToWidth(size.width());
+	_header->resizeToWidth(size.width() - 2 * margin);
 	_header->moveToLeft(
-		0,
-		fieldTop - _st.padding.top() - _header->height());
+		margin,
+		fieldTop - _st.padding.top() - _header->height() - gap);
 
-	auto right = 0;
+	auto right = margin;
 	if (_starsReaction) {
 		_starsReaction->moveToRight(right, buttonsTop);
 		right += _starsReaction->width() + _st.starsSkip;
@@ -5710,7 +5744,31 @@ void ComposeControls::updateAttachBotsMenu() {
 }
 
 void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
-	if (_backgroundRect) {
+	if (Ui::Glass::Enabled() && !_backgroundRect) {
+		const auto field = _field->geometry();
+		auto area = QRect(field.x() - st::glassInset,
+			field.y() - _st.padding.top(),
+			field.width() + 2 * st::glassInset,
+			composeFieldHeight() + _st.padding.top() + _st.padding.bottom());
+		for (const auto button : std::array<Ui::RpWidget*, 2>{
+			_attachToggle, _tabbedSelectorToggle }) {
+			if (button && !button->isHidden()) {
+				area = area.united(button->geometry());
+			}
+		}
+
+		if (_header->isDisplayed()) {
+			_glass.paint(p, _header->geometry(), _st.bg->c, st::glassRowRadius);
+		}
+		_glass.paint(p, area,
+			_st.bg->c, st::glassComposerRadius);
+		auto areas = std::vector<QRect>{ area };
+		if (_header->isDisplayed()) areas.push_back(_header->geometry());
+		if (!_send->isHidden()) areas.push_back(_send->geometry());
+		if (_voiceRecordBar->isActive()) areas.push_back(_voiceRecordBar->geometry());
+		Ui::Glass::MaskCapsules(_wrap.get(), areas, st::glassComposerRadius);
+
+	} else if (_backgroundRect) {
 		auto hq = PainterHighQualityEnabler(p);
 		p.setBrush(_st.bg);
 		p.setPen(Qt::NoPen);
@@ -5834,7 +5892,12 @@ int ComposeControls::composeFieldHeight() const {
 }
 
 void ComposeControls::updateHeight() {
-	const auto height = (_header->isDisplayed() ? _header->height() : 0)
+	if (!Ui::Glass::Enabled()) _wrap->clearMask();
+	const auto glass = Ui::Glass::Enabled() && !_backgroundRect;
+	const auto height = (_header->isDisplayed()
+		? _header->height() + (glass ? st::glassGap : 0)
+		: 0)
+		+ ((Ui::Glass::Enabled() && !_backgroundRect) ? 2 * st::glassGap : 0)
 		+ _st.padding.top()
 		+ composeFieldHeight()
 		+ _st.padding.bottom();

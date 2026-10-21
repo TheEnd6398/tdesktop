@@ -1,0 +1,257 @@
+name: Fork Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/liquid-glass-ui
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-win-x64-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORK_TOOLSET: '14.44'
+  FORK_SDK: '10.0.26100.0'
+  SCCACHE_GHA_ENABLED: 'true'
+
+jobs:
+  credentials:
+    name: Check fork API secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require personal API credentials
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+        run: |
+          missing=0
+          for name in API_ID API_HASH; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing repository secret $name. Add it under Settings > Secrets and variables > Actions."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+  effects:
+    name: Check glass rendering
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Qt for focused rendering checks
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qt6-base-dev ninja-build
+      - name: Build and test glass rendering in Debug
+        run: |
+          cmake -S Telegram/SourceFiles/tests/fork_glass -B out/glass-checks -G Ninja -DCMAKE_BUILD_TYPE=Debug
+          cmake --build out/glass-checks --parallel 4
+          ctest --test-dir out/glass-checks --output-on-failure
+      - name: Measure optimized bounded strip work
+        run: |
+          set -eo pipefail
+          cmake -S Telegram/SourceFiles/tests/fork_glass -B out/glass-benchmark -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build out/glass-benchmark --target test_glass_blur test_glass_material --parallel 4
+          ctest --test-dir out/glass-benchmark -R "glass_(blur|material)" --output-on-failure
+          out/glass-benchmark/test_glass_material --benchmark | tee out/blur-benchmark.json
+          lscpu --json > out/benchmark-cpu.json
+          python3 - <<'PYCPU'
+          import json
+          for row in json.load(open('out/benchmark-cpu.json'))['lscpu']:
+              if row['field'] in ('Architecture:', 'Model name:', 'CPU(s):'):
+                  print(row['field'], row['data'])
+          PYCPU
+      - uses: actions/upload-artifact@v7
+        with:
+          name: LiquidGlass-strip-benchmark-${{ github.sha }}
+          path: |
+            out/blur-benchmark.json
+            out/benchmark-cpu.json
+          if-no-files-found: error
+          retention-days: 14
+
+  dependencies:
+    name: Prepare x64 Release libraries
+    needs: [credentials, effects]
+    runs-on: windows-latest
+    timeout-minutes: 350
+    outputs:
+      cache-prefix: ${{ steps.identity.outputs.prefix }}
+      cache-revision: ${{ steps.identity.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          path: TBuild/tdesktop
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        with:
+          arch: x64
+          sdk: ${{ env.FORK_SDK }}
+          toolset: ${{ env.FORK_TOOLSET }}
+      - name: Ensure ATL matches the selected compiler
+        shell: pwsh
+        run: '& TBuild/tdesktop/Telegram/build/fork/ensure-atl.ps1'
+      - name: Identify pinned library recipes
+        id: identity
+        shell: pwsh
+        env:
+          RECIPE_HASH: ${{ hashFiles('TBuild/tdesktop/Telegram/build/prepare/**', 'TBuild/tdesktop/Telegram/build/qt_version.py', 'TBuild/tdesktop/cmake/external/angle/qt.cmake') }}
+        run: |
+          "prefix=fork-win-x64-release-v2-${{ runner.os }}-${env:FORK_TOOLSET}-${env:FORK_SDK}-${env:RECIPE_HASH}" >> $env:GITHUB_OUTPUT
+          "revision=${{ github.run_id }}-${{ github.run_attempt }}" >> $env:GITHUB_OUTPUT
+      - uses: actions/cache/restore@v6
+        id: tools
+        with:
+          path: TBuild/ThirdParty
+          key: ${{ steps.identity.outputs.prefix }}-tools-${{ steps.identity.outputs.revision }}
+          restore-keys: ${{ steps.identity.outputs.prefix }}-tools-
+      - uses: actions/cache/restore@v6
+        id: libraries
+        with:
+          path: |
+            TBuild/Libraries/win64/*
+            !TBuild/Libraries/win64/[qQ]t[_-]*
+            !TBuild/Libraries/win64/cache_keys
+            TBuild/Libraries/win64/cache_keys/*
+            !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ steps.identity.outputs.prefix }}-libraries-${{ steps.identity.outputs.revision }}
+          restore-keys: ${{ steps.identity.outputs.prefix }}-libraries-
+      - uses: actions/cache/restore@v6
+        id: qt
+        with:
+          path: |
+            TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ steps.identity.outputs.prefix }}-qt-${{ steps.identity.outputs.revision }}
+          restore-keys: ${{ steps.identity.outputs.prefix }}-qt-
+      - name: Prepare Debug and Release dependency configurations
+        id: prepare
+        shell: cmd
+        run: |
+          git config --global user.name "Fork dependency builder"
+          git config --global user.email "fork-build@users.noreply.github.com"
+          call TBuild\tdesktop\Telegram\build\prepare\win.bat silent qt6
+      - name: Retain installed Qt without its duplicate build tree
+        id: trim_qt
+        if: ${{ always() && !cancelled() && hashFiles('TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*') != '' }}
+        shell: pwsh
+        run: '& TBuild/tdesktop/Telegram/build/fork/trim-qt-cache.ps1 -LibrariesDirectory TBuild/Libraries/win64'
+      - name: Retain prepared tools after success or failure
+        if: ${{ always() && !cancelled() && (steps.prepare.outcome == 'success' || steps.prepare.outcome == 'failure') }}
+        uses: actions/cache/save@v6
+        with:
+          path: TBuild/ThirdParty
+          key: ${{ steps.tools.outputs.cache-primary-key }}
+      - name: Retain completed library stages after success or failure
+        if: ${{ always() && !cancelled() && (steps.prepare.outcome == 'success' || steps.prepare.outcome == 'failure') }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            TBuild/Libraries/win64/*
+            !TBuild/Libraries/win64/[qQ]t[_-]*
+            !TBuild/Libraries/win64/cache_keys
+            TBuild/Libraries/win64/cache_keys/*
+            !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ steps.libraries.outputs.cache-primary-key }}
+      - name: Retain a completed Qt stage
+        if: ${{ always() && !cancelled() && steps.trim_qt.outcome == 'success' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ steps.qt.outputs.cache-primary-key }}
+
+  build:
+    name: Compile and package Windows x64
+    needs: dependencies
+    runs-on: windows-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          path: TBuild/tdesktop
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        with:
+          arch: x64
+          sdk: ${{ env.FORK_SDK }}
+          toolset: ${{ env.FORK_TOOLSET }}
+      - name: Ensure ATL matches the selected compiler
+        shell: pwsh
+        run: '& TBuild/tdesktop/Telegram/build/fork/ensure-atl.ps1'
+      - uses: actions/cache/restore@v6
+        with:
+          path: TBuild/ThirdParty
+          key: ${{ needs.dependencies.outputs.cache-prefix }}-tools-${{ needs.dependencies.outputs.cache-revision }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v6
+        with:
+          path: |
+            TBuild/Libraries/win64/*
+            !TBuild/Libraries/win64/[qQ]t[_-]*
+            !TBuild/Libraries/win64/cache_keys
+            TBuild/Libraries/win64/cache_keys/*
+            !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ needs.dependencies.outputs.cache-prefix }}-libraries-${{ needs.dependencies.outputs.cache-revision }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v6
+        with:
+          path: |
+            TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: ${{ needs.dependencies.outputs.cache-prefix }}-qt-${{ needs.dependencies.outputs.cache-revision }}
+          fail-on-cache-miss: true
+      - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba
+      - name: Configure and build the fork
+        shell: pwsh
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          set(TDESKTOP_API_ID "$ENV{API_ID}" CACHE STRING "Fork API id" FORCE)
+          set(TDESKTOP_API_HASH "$ENV{API_HASH}" CACHE STRING "Fork API hash" FORCE)
+          '@ | Set-Content -Encoding utf8NoBOM "$env:RUNNER_TEMP/fork-api.cmake"
+          Set-Location TBuild/tdesktop/Telegram
+          & ./configure.bat -G 'Ninja Multi-Config' -C "$env:RUNNER_TEMP/fork-api.cmake" `
+            -D CMAKE_CONFIGURATION_TYPES=Release `
+            -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= `
+            -D CMAKE_C_COMPILER_LAUNCHER=sccache `
+            -D CMAKE_CXX_COMPILER_LAUNCHER=sccache `
+            -D TDESKTOP_API_TEST=OFF `
+            -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON `
+            -D TDESKTOP_FORK_LIQUID_GLASS=ON `
+            -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build ../out --config Release --target Telegram --parallel 4 -- -k 0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check isolated client startup
+        shell: pwsh
+        run: |
+          & TBuild/tdesktop/Telegram/build/fork/smoke-win.ps1 `
+            -BuildDirectory TBuild/tdesktop/out/Release
+      - name: Package portable application
+        shell: pwsh
+        run: |
+          & TBuild/tdesktop/Telegram/build/fork/package-win.ps1 `
+            -BuildDirectory TBuild/tdesktop/out/Release `
+            -Destination artifact
+          python TBuild/tdesktop/Telegram/build/fork/verify-package.py `
+            artifact/LiquidGlass-Windows-x64.zip --commit $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: LiquidGlass-Windows-x64-${{ github.sha }}
+          path: |
+            artifact/LiquidGlass-Windows-x64.zip
+            artifact/verification.json
+          if-no-files-found: error
+          retention-days: 14

@@ -38,9 +38,15 @@ void JumpDownButton::paintEvent(QPaintEvent *e) {
 
 	const auto over = isOver();
 	const auto down = isDown();
-	((over || down)
-		? _st.iconBelowOver
-		: _st.iconBelow).paint(p, _st.iconPosition, width());
+	if (Glass::Enabled()) {
+		_glass.paint(p, QRect(_st.rippleAreaPosition,
+			QSize(_st.rippleAreaSize, _st.rippleAreaSize)),
+			(over || down ? st::historyToDownBgOver : st::historyToDownBg)->c);
+	} else {
+		((over || down)
+			? _st.iconBelowOver
+			: _st.iconBelow).paint(p, _st.iconPosition, width());
+	}
 	paintRipple(p, _st.rippleAreaPosition.x(), _st.rippleAreaPosition.y());
 	((over || down)
 		? _st.iconAboveOver
@@ -55,6 +61,11 @@ void JumpDownButton::paintEvent(QPaintEvent *e) {
 		st.sizeId = Ui::UnreadBadgeSize::HistoryToDown;
 		Ui::PaintUnreadBadge(p, unreadString, width(), 0, st, 4);
 	}
+}
+
+void JumpDownButton::setBackdropSource(not_null<QWidget*> source) {
+	_glass.clear();
+	_glassBackdrop = Glass::ObserveBackdrop(this, source, &_glass);
 }
 
 void JumpDownButton::setUnreadCount(int unreadCount) {

@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "mainwindow.h"
 
+#include "ui/chat/glass_material.h"
+
 #include "data/data_document.h"
 #include "data/data_session.h"
 #include "data/data_document_media.h"
@@ -406,9 +408,10 @@ void MainWindow::showMainMenu() {
 	if (isHidden()) showFromTray();
 
 	ensureLayerCreated();
-	_layer->showMainMenu(
-		object_ptr<Window::MainMenu>(body(), sessionController()),
-		anim::type::normal);
+	auto menu = object_ptr<Window::MainMenu>(body(), sessionController());
+	_layer->setFullWindowMainMenuShade(Ui::Glass::Enabled());
+	menu->prepareGlassBackdrop();
+	_layer->showMainMenu(std::move(menu), anim::type::normal);
 }
 
 void MainWindow::ensureLayerCreated() {
@@ -418,6 +421,10 @@ void MainWindow::ensureLayerCreated() {
 	_layer = base::make_unique_q<Ui::LayerStackWidget>(
 		bodyWidget(),
 		crl::guard(this, [=] { return controller().uiShow(); }));
+
+	Ui::Glass::EnabledValue() | rpl::on_next([=](bool enabled) {
+		_layer->setFullWindowMainMenuShade(enabled);
+	}, _layer->lifetime());
 
 	_layer->hideFinishEvents(
 	) | rpl::filter([=] {
@@ -614,6 +621,9 @@ void MainWindow::checkActivation() {
 }
 
 bool MainWindow::contentOverlapped(const QRect &globalRect) {
+	if (Ui::Glass::CapturingBackdrop()) {
+		return false;
+	}
 	return (_main && _main->contentOverlapped(globalRect))
 		|| (_layer && _layer->contentOverlapped(globalRect));
 }

@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_main_menu_helpers.h"
 
+#include "ui/chat/glass_surface.h"
+#include "ui/widgets/glass_navigation_button.h"
+
 #include "apiwrap.h"
 #include "base/platform/base_platform_info.h"
 #include "data/data_channel.h"
@@ -313,10 +316,10 @@ void SetupMenuBots(
 				}
 				continue;
 			}
-			const auto button = wrap->add(object_ptr<Ui::SettingsButton>(
+			const auto button = wrap->add(object_ptr<Ui::Glass::NavigationButton>(
 				wrap,
 				rpl::single(bot.name),
-				st::mainMenuButton));
+				Ui::Glass::MenuButtonStyle(st::mainMenuButton, wrap->lifetime())));
 			const auto menu = button->lifetime().make_state<
 				base::unique_qptr<Ui::PopupMenu>
 			>();

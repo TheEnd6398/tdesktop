@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "core/ui_integration.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
 #include "api/api_text_entities.h"
 #include "core/local_url_handlers.h"
 #include "core/file_utilities.h"
@@ -294,6 +295,10 @@ QString UiIntegration::openglCheckFilePath() {
 
 QString UiIntegration::angleBackendFilePath() {
 	return ANGLEBackendFilePath();
+}
+
+bool UiIntegration::processScrollWheel(QWidget *scroll, QWheelEvent *event) {
+	return Ui::ProcessSmoothWheelScroll(scroll, event);
 }
 
 void UiIntegration::textActionsUpdated() {

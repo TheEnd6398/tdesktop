@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/widgets/chat_filters_tabs_strip.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
 #include "api/api_chat_filters_remove_manager.h"
 #include "boxes/choose_filter_box.h"
 #include "boxes/filters/edit_filter_box.h"
@@ -340,6 +341,8 @@ not_null<Ui::RpWidget*> AddChatFiltersTabsStrip(
 			return false;
 		}
 		const auto bar = scroll->horizontalScrollBar();
+		state->animation.stop();
+		if (Ui::ProcessSmoothWheelScroll(scroll, e, true)) return true;
 		const auto y = pixelDelta.y() ? pixelDelta.y() : angleDelta.y();
 		bar->setValue(bar->value() - y);
 		return true;

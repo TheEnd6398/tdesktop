@@ -16,6 +16,7 @@ set(style_files
     ui/filter_icons.style
     ui/menu_icons.style
     ui/chat/chat.style
+    ui/chat/fork_glass.style
     ui/chat/chat_style.style
     history/view/history_view_about_view.style
     ui/effects/credits.style
@@ -483,6 +484,18 @@ PRIVATE
     ui/chat/more_chats_bar.cpp
     ui/chat/more_chats_bar.h
     ui/chat/pinned_bar.cpp
+    ui/chat/chat_content_insets.cpp
+    ui/chat/chat_content_insets.h
+    ui/chat/glass_material.cpp
+    ui/chat/glass_material.h
+    ui/widgets/glass_navigation_button.cpp
+    ui/widgets/glass_navigation_button.h
+    ui/widgets/smooth_wheel_model.cpp
+    ui/widgets/smooth_wheel_model.h
+    ui/widgets/smooth_wheel_scroll.cpp
+    ui/widgets/smooth_wheel_scroll.h
+    ui/chat/glass_blur.cpp
+    ui/chat/glass_blur.h
     ui/chat/pinned_bar.h
     ui/chat/requests_bar.cpp
     ui/chat/requests_bar.h

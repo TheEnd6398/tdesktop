@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "ui/chat/glass_surface.h"
+
 #include "api/api_common.h"
 #include "base/object_ptr.h"
 #include "base/required.h"
@@ -555,6 +557,8 @@ private:
 	Mode _mode = Mode::Normal;
 
 	const std::unique_ptr<Ui::RpWidget> _wrap;
+	Ui::Glass::Surface _glass;
+	std::unique_ptr<QObject> _glassBackdrop;
 	std::unique_ptr<Ui::RpWidget> _writeRestricted;
 	rpl::event_stream<FullReplyTo> _jumpToItemRequests;
 

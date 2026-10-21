@@ -1,0 +1,11 @@
+using "ui/td_common.style";
+
+glassMargin: 12px;
+glassGap: 8px;
+glassInset: 5px;
+glassTintOpacity: 0.68;
+glassComposerRadius: 24px;
+glassCompactWidth: 420px;
+glassBlurRadius: 8px;
+glassRowRadius: 16px;
+glassWheelStep: 20px;

@@ -27,6 +27,8 @@ const PROPERTYKEY pkey_AppUserModel_ToastActivator = { { 0x9F4C2855, 0x9F79, 0x4
 
 #ifdef OS_WIN_STORE
 const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop.Store";
+#elif defined TDESKTOP_FORK_LIQUID_GLASS
+const WCHAR AppUserModelIdBase[] = L"LiquidGlass.TelegramDesktop";
 #else // OS_WIN_STORE
 const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop";
 #endif // OS_WIN_STORE
@@ -213,7 +215,11 @@ void CleanupShortcut() {
 		return;
 	}
 
+#if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+	QString path = systemShortcutPath() + u"Liquid Glass.lnk"_q;
+#else
 	QString path = systemShortcutPath() + u"Telegram.lnk"_q;
+#endif
 	std::wstring p = QDir::toNativeSeparators(path).toStdWString();
 
 	DWORD attributes = GetFileAttributes(p.c_str());
@@ -345,10 +351,14 @@ bool checkInstalled(QString path = {}) {
 		}
 	}
 
+#if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+	return validateShortcutAt(path + u"Liquid Glass/Liquid Glass.lnk"_q);
+#else
 	const auto installed = u"Telegram Desktop/Telegram.lnk"_q;
 	const auto old = u"Telegram Win (Unofficial)/Telegram.lnk"_q;
 	return validateShortcutAt(path + installed)
 		|| validateShortcutAt(path + old);
+#endif
 }
 
 bool ValidateShortcut() {
@@ -357,6 +367,12 @@ bool ValidateShortcut() {
 		return false;
 	}
 
+#if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
+	path += u"Liquid Glass.lnk"_q;
+	if (validateShortcutAt(path)) {
+		return true;
+	}
+#else
 	if (cAlphaVersion()) {
 		path += u"TelegramAlpha.lnk"_q;
 		if (validateShortcutAt(path)) {
@@ -372,6 +388,7 @@ bool ValidateShortcut() {
 			return true;
 		}
 	}
+#endif
 
 	auto shellLink = base::WinRT::TryCreateInstance<IShellLink>(
 		CLSID_ShellLink);

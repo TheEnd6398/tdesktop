@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "ui/widgets/buttons.h"
+#include "ui/chat/glass_surface.h"
 
 namespace Ui {
 
@@ -16,6 +17,7 @@ public:
 	JumpDownButton(QWidget *parent, const style::TwoIconButton &st);
 
 	void setUnreadCount(int unreadCount);
+	void setBackdropSource(not_null<QWidget*> source);
 	[[nodiscard]] int unreadCount() const {
 		return _unreadCount;
 	}
@@ -30,6 +32,8 @@ private:
 	const style::TwoIconButton &_st;
 
 	int _unreadCount = 0;
+	Glass::Surface _glass;
+	std::unique_ptr<QObject> _glassBackdrop;
 
 };
 

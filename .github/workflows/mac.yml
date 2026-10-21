@@ -6,6 +6,7 @@ on:
     branches-ignore:
       - public-canary
       - private-canary
+      - feature/liquid-glass-ui
     paths-ignore:
       - 'docs/**'
       - '**.md'
@@ -44,6 +45,7 @@ jobs:
 
   macos:
     name: MacOS
+    if: github.head_ref != 'feature/liquid-glass-ui'
     runs-on: ${{ (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/nightly') && 'depot-macos-latest' || 'macos-latest' }}
 
     strategy:

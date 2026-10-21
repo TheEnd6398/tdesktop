@@ -115,6 +115,7 @@ private:
 		not_null<CornerButtonsDelegate*> delegate);
 
 	bool eventFilter(QObject *o, QEvent *e) override;
+	void setupGlassBackdrop(not_null<QWidget*> viewport);
 
 	void computeCurrentReplyReturn();
 
@@ -128,6 +129,8 @@ private:
 	void updateAccessibleDescription(CornerButton &button);
 
 	const not_null<QWidget*> _parent;
+	Fn<QWidget*()> _backdropSource;
+	QPointer<QWidget> _glassSource;
 	const Fn<bool(QEvent*)> _scrollViewportEvent;
 	const not_null<CornerButtonsDelegate*> _delegate;
 

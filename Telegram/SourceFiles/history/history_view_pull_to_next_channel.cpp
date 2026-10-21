@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_view_pull_to_next_channel.h"
 
+#include "ui/chat/glass_surface.h"
 #include "apiwrap.h"
 #include "base/call_delayed.h"
 #include "base/platform/base_platform_haptic.h"
@@ -1051,12 +1052,12 @@ void PullToNextChannel::updateGeometry() {
 	const auto height = st::historyPullNextMaxHeight;
 	_indicator->setGeometry(
 		0,
-		_scroll->height() - height,
+		Ui::Glass::ChatReadingRect(_scroll).bottom() + 1 - _scroll->y() - height,
 		_scroll->width(),
 		height);
 	_indicator->raise();
 
-	const auto top = _scroll->y() + _scroll->height();
+	const auto top = Ui::Glass::ChatReadingRect(_scroll).bottom() + 1;
 	const auto bottom = _parent->height();
 	if (bottom > top) {
 		_hint->setGeometry(_scroll->x(), top, _scroll->width(), bottom - top);

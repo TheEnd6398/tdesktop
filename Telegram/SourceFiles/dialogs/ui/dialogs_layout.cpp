@@ -7,6 +7,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/ui/dialogs_layout.h"
 
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
+#include <QtGui/QPainterPath>
+
 #include "base/options.h"
 #include "base/unixtime.h"
 #include "core/ui_integration.h"
@@ -484,12 +488,32 @@ void PaintRow(
 	if (swipeTranslation) {
 		p.translate(swipeMirrored ? swipeTranslation : -swipeTranslation, 0);
 	}
-	p.fillRect(geometry, bg);
+	const auto glass = Ui::Glass::Enabled();
+	const auto area = geometry.marginsRemoved(QMargins(
+		st::glassGap, st::glassInset, st::glassGap, st::glassInset));
+	if (glass) {
+		p.fillRect(geometry, context.currentBg);
+		if (context.active || context.selected) {
+			auto hq = PainterHighQualityEnabler(p);
+			p.setPen(Qt::NoPen);
+			p.setBrush(bg);
+			p.drawRoundedRect(area, st::glassRowRadius, st::glassRowRadius);
+		}
+	} else {
+		p.fillRect(geometry, bg);
+	}
 	if (!(flags & Flag::TopicJumpRipple)) {
 		auto ripple = context.active
 			? st::dialogsRippleBgActive
 			: st::dialogsRippleBg;
+		p.save();
+		if (glass) {
+			auto path = QPainterPath();
+			path.addRoundedRect(area, st::glassRowRadius, st::glassRowRadius);
+			p.setClipPath(path, Qt::IntersectClip);
+		}
 		row->paintRipple(p, 0, 0, context.width, &ripple->c);
+		p.restore();
 	}
 
 	if (flags & Flag::SavedMessages) {

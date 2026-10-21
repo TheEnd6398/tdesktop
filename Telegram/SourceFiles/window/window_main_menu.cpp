@@ -7,6 +7,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_main_menu.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
+
+#include "mainwidget.h"
+#include "styles/style_fork_glass.h"
+#include "styles/style_layers.h"
+
 #include "apiwrap.h"
 #include "base/event_filter.h"
 #include "base/qt_signal_producer.h"
@@ -83,6 +89,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
+#include <QtGui/QPainterPath>
 
 namespace Window {
 namespace {
@@ -312,6 +319,7 @@ MainMenu::MainMenu(
 	not_null<SessionController*> controller)
 : LayerWidget(parent)
 , _controller(controller)
+, _buttonStyle(Ui::Glass::MenuButtonStyle(st::mainMenuButton, lifetime()))
 , _userpicButton(
 	this,
 	_controller->session().user(),
@@ -328,7 +336,7 @@ MainMenu::MainMenu(
 	[=] { return controller->isGifPausedAtLeastFor(GifPauseReason::Layer); },
 	kPlayStatusLimit,
 	Info::Profile::BadgeType::Premium))
-, _scroll(this, st::defaultSolidScroll)
+, _scroll(this, Ui::Glass::TransparentScrollStyle(st::defaultSolidScroll, lifetime()))
 , _inner(_scroll->setOwnedWidget(
 	object_ptr<Ui::VerticalLayout>(_scroll.data())))
 , _topShadowSkip(_inner->add(
@@ -346,7 +354,14 @@ MainMenu::MainMenu(
 , _telegram(
 	Ui::CreateChild<Ui::FlatLabel>(_footer.get(), st::mainMenuTelegramLabel))
 , _version(AddVersionLabel(_footer)) {
-	setAttribute(Qt::WA_OpaquePaintEvent);
+	setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
+	_glassBackdrop = Ui::Glass::ObserveBackdrop(this, controller->content(), &_glass,
+		[] { return st::layerBg->c; });
+	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
+		setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
+		parentResized();
+		update();
+	}, lifetime());
 
 	setupUserpicButton();
 	setupAccountsToggle();
@@ -354,12 +369,15 @@ MainMenu::MainMenu(
 	setupAccounts();
 	setupArchive();
 	setupMenu();
+	Ui::SetupSmoothWheelScroll(_scroll.data());
 
 	const auto shadow = Ui::CreateChild<Ui::PlainShadow>(this);
 	widthValue(
 	) | rpl::on_next([=](int width) {
 		const auto line = st::lineWidth;
-		shadow->setGeometry(0, st::mainMenuCoverHeight - line, width, line);
+		const auto margin = Ui::Glass::Enabled() ? st::glassMargin : 0;
+		shadow->setGeometry(margin, margin + st::mainMenuCoverHeight - line,
+			width - 2 * margin, line);
 	}, shadow->lifetime());
 
 	_nightThemeSwitch.setCallback([this] {
@@ -388,8 +406,13 @@ MainMenu::MainMenu(
 	parentResized();
 
 	_telegram->setMarkedText(tr::link(
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+		tr::lng_settings_liquid_glass(tr::now),
+		u"https://github.com/TheEnd6398/tdesktop"_q));
+#else
 		u"Telegram Desktop"_q,
 		u"https://desktop.telegram.org"_q));
+#endif
 	_telegram->setLinksTrusted();
 	// The canary version is too long for the "Version {version}" form.
 	_version->setMarkedText(
@@ -445,7 +468,9 @@ MainMenu::MainMenu(
 			snowRaw->paintRequest(
 			) | rpl::on_next([=](const QRect &r) {
 				auto p = Painter(snowRaw);
-				p.fillRect(r, st::mainMenuBg);
+				if (!Ui::Glass::Enabled()) {
+					p.fillRect(r, st::mainMenuBg);
+				}
 				drawName(p);
 				snow->paint(p, snowRaw->rect());
 			}, snowRaw->lifetime());
@@ -476,16 +501,18 @@ void MainMenu::moveBadge() {
 	if (!_badge->widget()) {
 		return;
 	}
+	const auto margin = Ui::Glass::Enabled() ? st::glassMargin : 0;
 	const auto available = width()
+		- 2 * margin
 		- st::mainMenuCoverNameLeft
 		- _toggleAccounts->rightSkip()
 		- _badge->widget()->width();
-	const auto left = st::mainMenuCoverNameLeft
+	const auto left = margin + st::mainMenuCoverNameLeft
 		+ std::min(_name.maxWidth() + st::semiboldFont->spacew, available);
 	_badge->move(
 		left,
-		st::mainMenuCoverNameTop,
-		st::mainMenuCoverNameTop + st::semiboldFont->height);
+		margin + st::mainMenuCoverNameTop,
+		margin + st::mainMenuCoverNameTop + st::semiboldFont->height);
 }
 
 void MainMenu::setupArchive() {
@@ -525,7 +552,7 @@ void MainMenu::setupArchive() {
 	const auto button = AddButtonWithIcon(
 		inner,
 		tr::lng_archived_name(),
-		st::mainMenuButton,
+		_buttonStyle,
 		{ &st::menuIconArchiveOpen });
 	inner->add(
 		object_ptr<Ui::PlainShadow>(inner),
@@ -639,7 +666,24 @@ void MainMenu::setupSetEmojiStatus() {
 }
 
 void MainMenu::parentResized() {
-	resize(st::mainMenuWidth, parentWidget()->height());
+	const auto margin = Ui::Glass::Enabled() ? st::glassMargin : 0;
+	resize(std::min(st::mainMenuWidth + 2 * margin, parentWidget()->width()),
+		parentWidget()->height());
+	if (margin) {
+		auto path = QPainterPath();
+		path.addRoundedRect(QRectF(rect().marginsRemoved(
+			QMargins(margin, margin, margin, margin))),
+			st::glassComposerRadius, st::glassComposerRadius);
+		setMask(QRegion(path.toFillPolygon().toPolygon()));
+	} else {
+		clearMask();
+	}
+	updateControlsGeometry();
+}
+
+void MainMenu::prepareGlassBackdrop() {
+	moveToLeft(0, 0);
+	Ui::Glass::PrepareBackdrop(_glass, this, _controller->content(), st::layerBg->c);
 }
 
 void MainMenu::showFinished() {
@@ -664,7 +708,7 @@ void MainMenu::setupMenu() {
 		return AddButtonWithIcon(
 			_menu,
 			std::move(text),
-			st::mainMenuButton,
+			_buttonStyle,
 			std::move(descriptor));
 	};
 	if (!_controller->session().supportMode()) {
@@ -672,7 +716,7 @@ void MainMenu::setupMenu() {
 			CreateButtonWithIcon(
 				_menu,
 				tr::lng_menu_my_profile(),
-				st::mainMenuButton,
+				_buttonStyle,
 				{ &st::menuIconProfile })
 		)->setClickedCallback([=] {
 			controller->showSection(
@@ -728,12 +772,12 @@ void MainMenu::setupMenu() {
 				CreateButtonWithIcon(
 					_menu,
 					tr::lng_wallet_menu(),
-					st::mainMenuButton,
+					_buttonStyle,
 					{ &st::walletMenuIcon })));
 		Ui::NewBadge::AddAfterButtonText(
 			wallet->entity(),
 			tr::lng_wallet_menu(),
-			st::mainMenuButton);
+			_buttonStyle);
 		wallet->toggleOn(session->appConfig().value(
 		) | rpl::map([=] {
 			return session->appConfig().walletAvailable();
@@ -815,30 +859,32 @@ void MainMenu::setupMenu() {
 }
 
 void MainMenu::resizeEvent(QResizeEvent *e) {
-	_inner->resizeToWidth(width());
+	_inner->resizeToWidth(width() - (Ui::Glass::Enabled() ? 2 * st::glassMargin : 0));
 	updateControlsGeometry();
 }
 
 void MainMenu::updateControlsGeometry() {
+	const auto margin = Ui::Glass::Enabled() ? st::glassMargin : 0;
 	_userpicButton->moveToLeft(
-		st::mainMenuUserpicLeft,
-		st::mainMenuUserpicTop);
+		margin + st::mainMenuUserpicLeft,
+		margin + st::mainMenuUserpicTop);
 	if (_resetScaleButton) {
-		_resetScaleButton->moveToRight(0, 0);
+		_resetScaleButton->moveToRight(margin, margin);
 	}
 	_setEmojiStatus->moveToLeft(
-		st::mainMenuCoverStatusLeft,
-		st::mainMenuCoverStatusTop,
+		margin + st::mainMenuCoverStatusLeft,
+		margin + st::mainMenuCoverStatusTop,
 		width());
 	_toggleAccounts->setGeometry(
-		0,
-		st::mainMenuCoverNameTop,
-		width(),
+		margin,
+		margin + st::mainMenuCoverNameTop,
+		width() - 2 * margin,
 		st::mainMenuCoverHeight - st::mainMenuCoverNameTop);
 	// Allow cover shadow over the scrolled content.
-	const auto top = st::mainMenuCoverHeight - st::lineWidth;
-	_scroll->setGeometry(0, top, width(), height() - top);
+	const auto top = margin + st::mainMenuCoverHeight - st::lineWidth;
+	_scroll->setGeometry(margin, top, width() - 2 * margin, height() - top - margin);
 	updateInnerControlsGeometry();
+	moveBadge();
 }
 
 void MainMenu::updateInnerControlsGeometry() {
@@ -846,7 +892,8 @@ void MainMenu::updateInnerControlsGeometry() {
 		+ _shadow->height()
 		+ st::mainMenuSkip
 		+ _menu->height();
-	const auto available = height() - st::mainMenuCoverHeight - contentHeight;
+	const auto available = height() - st::mainMenuCoverHeight - contentHeight
+		- (Ui::Glass::Enabled() ? 2 * st::glassMargin : 0);
 	const auto footerHeight = std::max(
 		available,
 		st::mainMenuFooterHeightMin);
@@ -903,14 +950,22 @@ void MainMenu::paintEvent(QPaintEvent *e) {
 	const auto clip = e->rect();
 	const auto cover = QRect(0, 0, width(), st::mainMenuCoverHeight);
 
-	p.fillRect(clip, st::mainMenuBg);
+	if (Ui::Glass::Enabled()) {
+		const auto margin = st::glassMargin;
+		_glass.paint(p, rect().marginsRemoved(QMargins(margin, margin, margin, margin)),
+			st::mainMenuBg->c, st::glassComposerRadius);
+	} else {
+		p.fillRect(clip, st::mainMenuBg);
+	}
 	if (cover.intersects(clip)) {
 		drawName(p);
 	}
 }
 
 void MainMenu::drawName(Painter &p) {
+	const auto margin = Ui::Glass::Enabled() ? st::glassMargin : 0;
 	const auto widthText = width()
+		- 2 * margin
 		- st::mainMenuCoverNameLeft
 		- _toggleAccounts->rightSkip();
 
@@ -927,8 +982,8 @@ void MainMenu::drawName(Painter &p) {
 	p.setPen(st::windowBoldFg);
 	_name.drawLeftElided(
 		p,
-		st::mainMenuCoverNameLeft,
-		st::mainMenuCoverNameTop,
+		margin + st::mainMenuCoverNameLeft,
+		margin + st::mainMenuCoverNameTop,
 		(widthText
 			- (_badge->widget()
 				? (st::semiboldFont->spacew + _badge->widget()->width())

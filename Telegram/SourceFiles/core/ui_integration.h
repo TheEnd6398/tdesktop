@@ -49,6 +49,7 @@ public:
 	QString openglCheckFilePath() override;
 	QString angleBackendFilePath() override;
 
+	bool processScrollWheel(QWidget *scroll, QWheelEvent *event) override;
 	void textActionsUpdated() override;
 	void activationFromTopPanel() override;
 	void touchCounterIncrement() override;

@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "ui/wrap/slide_wrap.h"
 #include "base/object_ptr.h"
+#include "ui/chat/glass_surface.h"
 
 namespace Ui {
 
@@ -25,7 +26,8 @@ public:
 	PinnedBar(
 		not_null<QWidget*> parent,
 		Fn<bool()> customEmojiPaused,
-		rpl::producer<> customEmojiPausedChanges);
+		rpl::producer<> customEmojiPausedChanges,
+		Window::SessionController *controller = nullptr);
 	~PinnedBar();
 
 	void show();
@@ -58,6 +60,9 @@ private:
 	void updateControlsGeometry(QRect wrapGeometry);
 
 	Ui::SlideWrap<> _wrap;
+	Glass::Surface _glass;
+	std::unique_ptr<QObject> _glassBackdrop;
+	Window::SessionController *_controller = nullptr;
 	std::unique_ptr<Ui::MessageBar> _bar;
 
 	struct {
