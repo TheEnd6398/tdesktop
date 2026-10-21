@@ -192,6 +192,7 @@ private:
 	void paintTopBar(Painter &p);
 	void paintGlass(Painter &p);
 	[[nodiscard]] QRect glassTitleRect() const;
+	[[nodiscard]] QRect glassActionsRect() const;
 	[[nodiscard]] PeerData *titleNamePeer() const;
 	void paintStatus(
 		Painter &p,

@@ -5746,22 +5746,23 @@ void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
 			Ui::Glass::PrepareChat(_glass, _wrap.get(), _regularWindow);
 		}
 		const auto field = _field->geometry();
-		const auto area = QRect(field.x() - st::glassInset,
+		auto area = QRect(field.x() - st::glassInset,
 			field.y() - _st.padding.top(),
 			field.width() + 2 * st::glassInset,
 			composeFieldHeight() + _st.padding.top() + _st.padding.bottom());
+		for (const auto button : std::array<Ui::RpWidget*, 2>{
+			_attachToggle, _tabbedSelectorToggle }) {
+			if (button && !button->isHidden()) {
+				area = area.united(button->geometry());
+			}
+		}
+
 		if (_header->isDisplayed()) {
 			_glass.paint(p, _header->geometry(), _st.bg->c, st::glassRowRadius);
 		}
 		_glass.paint(p, area,
 			_st.bg->c, st::glassComposerRadius);
 
-		for (const auto button : std::array<Ui::RpWidget*, 2>{
-			_attachToggle, _tabbedSelectorToggle }) {
-			if (button && !button->isHidden()) {
-				_glass.paint(p, Ui::Glass::ButtonRect(button->geometry()), _st.bg->c);
-			}
-		}
 	} else if (_backgroundRect) {
 		auto hq = PainterHighQualityEnabler(p);
 		p.setBrush(_st.bg);

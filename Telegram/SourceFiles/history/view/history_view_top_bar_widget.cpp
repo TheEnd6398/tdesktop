@@ -573,6 +573,17 @@ QRect TopBarWidget::glassTitleRect() const {
 		st::topBarHeight);
 }
 
+QRect TopBarWidget::glassActionsRect() const {
+	auto result = QRect();
+	for (const auto button : { _call.data(), _groupCall.data(),
+		_search.data(), _infoToggle.data(), _menuToggle.data() }) {
+		if (!button->isHidden()) {
+			result = result.united(button->geometry());
+		}
+	}
+	return result;
+}
+
 void TopBarWidget::paintGlass(Painter &p) {
 	Ui::Glass::PrepareChat(_glass, this, _controller);
 	if (showSelectedActions() || _searchMode || _selectedShown.animating()
@@ -583,9 +594,8 @@ void TopBarWidget::paintGlass(Painter &p) {
 		return;
 	}
 	_glass.paint(p, glassTitleRect(), st::topBarBg->c);
-	for (const auto button : { _back.data(), _cancelChoose.data(),
-		_call.data(), _groupCall.data(), _search.data(),
-		_infoToggle.data(), _menuToggle.data() }) {
+	_glass.paint(p, glassActionsRect(), st::topBarBg->c);
+	for (const auto button : { _back.data(), _cancelChoose.data() }) {
 		if (!button->isHidden()) {
 			_glass.paint(p, Ui::Glass::ButtonRect(button->geometry()),
 				st::topBarBg->c);
@@ -1358,26 +1368,24 @@ void TopBarWidget::updateControlsGeometry() {
 	} else {
 		_menuToggle->moveToRight(_rightTaken, otherButtonsTop);
 	}
-	if (_menuToggle->isHidden()) {
+	if (_menuToggle->isHidden() && !glass) {
 		_rightTaken += (_menuToggle->width() - _search->width());
-	} else {
-		_rightTaken += _menuToggle->width() + (glass ? gap : st::topBarSkip);
+	} else if (!_menuToggle->isHidden()) {
+		_rightTaken += _menuToggle->width() + (glass ? 0 : st::topBarSkip);
 	}
 	_infoToggle->moveToRight(_rightTaken, otherButtonsTop);
 	if (!_infoToggle->isHidden()) {
 		_infoToggle->moveToRight(_rightTaken, otherButtonsTop);
 		_rightTaken += _infoToggle->width();
-		_rightTaken += gap;
 	}
 	if (!_call->isHidden() || !_groupCall->isHidden()) {
 		_call->moveToRight(_rightTaken, otherButtonsTop);
 		_groupCall->moveToRight(_rightTaken, otherButtonsTop);
 		_rightTaken += _call->width();
-		_rightTaken += gap;
 	}
 	_search->moveToRight(_rightTaken, otherButtonsTop);
 	if (!_search->isHidden()) {
-		_rightTaken += _search->width() + st::topBarCallSkip;
+		_rightTaken += _search->width() + (glass ? 0 : st::topBarCallSkip);
 	}
 
 	updateMembersShowArea();

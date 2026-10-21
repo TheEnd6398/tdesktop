@@ -256,3 +256,10 @@ capsules, group header actions, and refresh bounded, expanded blur strips from
 content invalidation. Keep the existing wheel easing model and native input
 classification unchanged while extending its installation coverage. Menu
 shade must cover the complete layer window behind the floating panel.
+
+Header actions share one pill, sized from the currently visible buttons;
+selection and in-header search retain one unified toolbar capsule. Composer
+attachment and emoji controls share the input surface, with the native
+send/record control separate. This follows the input grouping in Telegram
+macOS (`Telegram-Mac/ChatInputView.swift` in `overtake/TelegramSwift`), while
+retaining this client's native event handlers and optional bot controls.

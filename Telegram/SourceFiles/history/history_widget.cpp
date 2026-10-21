@@ -11331,9 +11331,16 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 			QRect(0, backy, width(), backh));
 		const auto field = _field->geometry();
 		const auto inputHeight = fieldHeight() + 2 * st::historySendPadding;
-		const auto full = QRect(field.x() - st::glassInset,
+		auto full = QRect(field.x() - st::glassInset,
 			field.y() - st::historySendPadding,
 			field.width() + 2 * st::glassInset, inputHeight);
+		for (const auto button : std::array<Ui::RpWidget*, 2>{
+			_attachToggle.data(), _tabbedSelectorToggle.data() }) {
+			if (button && !button->isHidden()) {
+				full = full.united(button->geometry());
+			}
+		}
+
 		if (backh > inputHeight) {
 			_glassComposer.paint(p, fieldHeaderRect(), st::historyReplyBg->c,
 				st::glassRowRadius);
@@ -11341,13 +11348,6 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		_glassComposer.paint(p, full, st::historyReplyBg->c,
 			st::glassComposerRadius);
 
-		for (const auto button : std::array<Ui::RpWidget*, 2>{
-			_attachToggle.data(), _tabbedSelectorToggle.data() }) {
-			if (!button->isHidden()) {
-				_glassComposer.paint(p, Ui::Glass::ButtonRect(button->geometry()),
-					st::historyReplyBg->c);
-			}
-		}
 	} else {
 		p.fillRect(myrtlrect(0, backy, width(), backh), st::historyReplyBg);
 	}
