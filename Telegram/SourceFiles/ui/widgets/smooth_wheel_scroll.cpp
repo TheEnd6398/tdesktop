@@ -21,15 +21,16 @@ class WheelMotionBase : public QObject {
 public:
 	using QObject::QObject;
 	virtual void cancel() = 0;
+	virtual bool wheel(not_null<QWheelEvent*> event) = 0;
 
 };
 
 template <typename Scroll>
 class WheelMotion final : public WheelMotionBase {
 public:
-	explicit WheelMotion(not_null<Scroll*> scroll);
+	explicit WheelMotion(not_null<Scroll*> scroll, bool horizontal = false);
 	~WheelMotion() override;
-	bool wheel(not_null<QWheelEvent*> event);
+	bool wheel(not_null<QWheelEvent*> event) override;
 	void cancel() override;
 
 private:
@@ -37,6 +38,7 @@ private:
 	void tick(crl::time now);
 
 	const not_null<Scroll*> _scroll;
+	const bool _horizontal;
 	SmoothWheelModel _model;
 	Ui::Animations::Basic _clock;
 	int _lastApplied = -1;
@@ -56,23 +58,53 @@ int WheelStep(not_null<Ui::ElasticScroll*>) {
 }
 
 template <typename Scroll>
-WheelMotion<Scroll>::WheelMotion(not_null<Scroll*> scroll)
+int Position(not_null<Scroll*> scroll, bool horizontal) {
+	return horizontal ? scroll->scrollLeft() : scroll->scrollTop();
+}
+
+template <typename Scroll>
+int Maximum(not_null<Scroll*> scroll, bool horizontal) {
+	return horizontal ? scroll->scrollLeftMax() : scroll->scrollTopMax();
+}
+
+template <typename Scroll>
+void Apply(not_null<Scroll*> scroll, bool horizontal, int value) {
+	if constexpr (std::is_same_v<Scroll, ScrollArea>) {
+		if (horizontal) {
+			scroll->scrollToX(value);
+			return;
+		}
+	}
+	scroll->scrollToY(value);
+}
+
+template <typename Scroll>
+WheelMotion<Scroll>::WheelMotion(not_null<Scroll*> scroll, bool horizontal)
 : WheelMotionBase(scroll)
 , _scroll(scroll)
+, _horizontal(horizontal)
 , _model(kWheelDuration) {
-	setObjectName(u"liquidGlassWheel"_q);
+	setObjectName(horizontal ? u"liquidGlassHorizontalWheel"_q : u"liquidGlassWheel"_q);
 	_clock.init([=](crl::time now) { tick(now); });
 	QCoreApplication::instance()->installEventFilter(this);
 	PowerSaving::Changes() | rpl::on_next([=] {
-		_enabled = !PowerSaving::On(PowerSaving::kSmoothScrolling);
+		_enabled = (!PowerSaving::On(PowerSaving::kSmoothScrolling)
+		&& !PowerSaving::On(PowerSaving::kAnimations));
 		cancel();
 	}, _lifetime);
-	_enabled = !PowerSaving::On(PowerSaving::kSmoothScrolling);
+	_enabled = (!PowerSaving::On(PowerSaving::kSmoothScrolling)
+		&& !PowerSaving::On(PowerSaving::kAnimations));
+	if (_horizontal) {
+		_scroll->scrolls() | rpl::on_next([=] {
+			if (!_writing) cancel();
+		}, _lifetime);
+	} else {
 	_scroll->scrollTopChanges() | rpl::on_next([=](int) {
 		if (!_writing) {
 			cancel();
 		}
 	}, _lifetime);
+	}
 	rpl::merge(_scroll->innerResizes(), _scroll->geometryChanged())
 	| rpl::on_next([=] { cancel(); }, _lifetime);
 }
@@ -104,9 +136,9 @@ bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
 	const auto step = (lines < 0)
 		? double(_scroll->height())
 		: double(lines) * WheelStep(_scroll);
-	const auto distance = -double(event->angleDelta().y()) * (step / 120.);
-	const auto position = _scroll->scrollTop();
-	const auto maximum = std::max(0, _scroll->scrollTopMax());
+	const auto distance = -double(event->angleDelta().y()) * (_horizontal ? 1. : step / 120.);
+	const auto position = Position(_scroll, _horizontal);
+	const auto maximum = std::max(0, Maximum(_scroll, _horizontal));
 	if (!step || position < 0 || position > maximum
 		|| position + distance <= 0 || position + distance >= maximum) {
 		cancel();
@@ -130,8 +162,8 @@ void WheelMotion<Scroll>::tick(crl::time now) {
 	if (!_enabled || anim::Disabled() || _scroll->isHidden()
 		|| !_scroll->isVisibleTo(_scroll->window())
 		|| _scroll->window()->isHidden()
-		|| _scroll->scrollTopMax() != _maximum
-		|| (_lastApplied >= 0 && _scroll->scrollTop() != _lastApplied)) {
+		|| Maximum(_scroll, _horizontal) != _maximum
+		|| (_lastApplied >= 0 && Position(_scroll, _horizontal) != _lastApplied)) {
 		cancel();
 		return;
 	}
@@ -142,12 +174,12 @@ void WheelMotion<Scroll>::tick(crl::time now) {
 	}
 	const auto weak = QPointer<WheelMotionBase>(this);
 	_writing = true;
-	_scroll->scrollToY(*value);
+	Apply(_scroll, _horizontal, *value);
 	if (!weak) {
 		return;
 	}
 	_writing = false;
-	if (_scroll->scrollTop() != *value || _scroll->scrollTopMax() != _maximum) {
+	if (Position(_scroll, _horizontal) != *value || Maximum(_scroll, _horizontal) != _maximum) {
 		cancel();
 		return;
 	}
@@ -199,6 +231,19 @@ void Install(not_null<Scroll*> scroll) {
 #endif
 }
 
+template <typename Scroll>
+bool Process(not_null<Scroll*> scroll, not_null<QWheelEvent*> event, bool horizontal) {
+	const auto name = horizontal ? u"liquidGlassHorizontalWheel"_q : u"liquidGlassWheel"_q;
+	auto state = dynamic_cast<WheelMotionBase*>(scroll->template findChild<QObject*>(
+		name, Qt::FindDirectChildrenOnly));
+	if (!IsDiscreteWheel(*event) || !Maximum(scroll, horizontal)) {
+		if (state) state->cancel();
+		return false;
+	}
+	if (!state) state = new WheelMotion<Scroll>(scroll, horizontal);
+	return state->wheel(event);
+}
+
 } // namespace
 
 void SetupSmoothWheelScroll(not_null<ScrollArea*> scroll) {
@@ -207,6 +252,22 @@ void SetupSmoothWheelScroll(not_null<ScrollArea*> scroll) {
 
 void SetupSmoothWheelScroll(not_null<ElasticScroll*> scroll) {
 	Install(scroll);
+}
+
+bool ProcessSmoothWheelScroll(
+		not_null<QWidget*> scroll,
+		not_null<QWheelEvent*> event,
+		bool horizontal) {
+#ifdef TDESKTOP_FORK_LIQUID_GLASS
+	if (const auto area = dynamic_cast<ScrollArea*>(scroll.get())) {
+		return Process(not_null<ScrollArea*>(area), event, horizontal);
+	} else if (!horizontal) {
+		if (const auto elastic = dynamic_cast<ElasticScroll*>(scroll.get())) {
+			return Process(not_null<ElasticScroll*>(elastic), event, false);
+		}
+	}
+#endif
+	return false;
 }
 
 void ResetSmoothWheelScroll(not_null<QWidget*> scroll) {

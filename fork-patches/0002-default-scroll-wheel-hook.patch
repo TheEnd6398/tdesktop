@@ -1,0 +1,79 @@
+diff --git a/ui/integration.cpp b/ui/integration.cpp
+index 29b59a4..61fd017 100644
+--- a/ui/integration.cpp
++++ b/ui/integration.cpp
+@@ -20,6 +20,10 @@ Integration *IntegrationInstance = nullptr;
+ 
+ } // namespace
+ 
++bool Integration::processScrollWheel(QWidget*, QWheelEvent*) {
++	return false;
++}
++
+ void Integration::Set(not_null<Integration*> instance) {
+ 	IntegrationInstance = instance;
+ 
+diff --git a/ui/integration.h b/ui/integration.h
+index 07b8779..d4e5f7a 100644
+--- a/ui/integration.h
++++ b/ui/integration.h
+@@ -16,6 +16,7 @@
+ 
+ class QString;
+ class QWidget;
++class QWheelEvent;
+ class QVariant;
+ 
+ struct TextParseOptions;
+@@ -48,6 +49,7 @@ public:
+ 	[[nodiscard]] virtual QString openglCheckFilePath() = 0;
+ 	[[nodiscard]] virtual QString angleBackendFilePath() = 0;
+ 
++	virtual bool processScrollWheel(QWidget *scroll, QWheelEvent *event);
+ 	virtual void textActionsUpdated();
+ 	virtual void activationFromTopPanel();
+ 	virtual void touchCounterIncrement() = 0;
+diff --git a/ui/widgets/elastic_scroll.cpp b/ui/widgets/elastic_scroll.cpp
+index 667a233..d9671ff 100644
+--- a/ui/widgets/elastic_scroll.cpp
++++ b/ui/widgets/elastic_scroll.cpp
+@@ -6,6 +6,7 @@
+ //
+ #include "ui/widgets/elastic_scroll.h"
+ 
++#include "ui/integration.h"
+ #include "ui/painter.h"
+ #include "ui/ui_utility.h"
+ #include "base/qt/qt_common_adapters.h"
+@@ -886,6 +887,9 @@ bool ElasticScroll::handleWheelEvent(not_null<QWheelEvent*> e, bool touch) {
+ 		&& _customWheelProcess(static_cast<QWheelEvent*>(e.get()))) {
+ 		return true;
+ 	}
++	if (!touch && Integration::Exists() && Integration::Instance().processScrollWheel(this, e)) {
++		return true;
++	}
+ 	const auto phase = e->phase();
+ 	auto ownAxisLocked = false;
+ 	if (_wheelDirectionLocked || _crossAxisWheelProcess) {
+diff --git a/ui/widgets/scroll_area.cpp b/ui/widgets/scroll_area.cpp
+index bf4af8e..b1aa703 100644
+--- a/ui/widgets/scroll_area.cpp
++++ b/ui/widgets/scroll_area.cpp
+@@ -6,6 +6,7 @@
+ //
+ #include "ui/widgets/scroll_area.h"
+ 
++#include "ui/integration.h"
+ #include "ui/painter.h"
+ #include "ui/ui_utility.h"
+ #include "base/qt/qt_common_adapters.h"
+@@ -626,6 +627,9 @@ bool ScrollArea::viewportEvent(QEvent *e) {
+ 		if (_customWheelProcess && _customWheelProcess(ev)) {
+ 			return true;
+ 		}
++		if (Integration::Exists() && Integration::Instance().processScrollWheel(this, ev)) {
++			return true;
++		}
+ 		if (_wheelDirectionLocked || _crossAxisWheelProcess) {
+ 			const auto phase = ev->phase();
+ 			const auto delta = ScrollDeltaF(ev);

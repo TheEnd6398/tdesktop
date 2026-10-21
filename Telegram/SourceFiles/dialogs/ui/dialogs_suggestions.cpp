@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/ui/dialogs_suggestions.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
 #include "api/api_chat_participants.h"
 #include "apiwrap.h"
 #include "base/unixtime.h"
@@ -1416,6 +1417,8 @@ void Suggestions::setupTabs() {
 		if (std::abs(pixelDelta.x()) + std::abs(angleDelta.x())) {
 			return false;
 		}
+		_tabsScrollAnimation.stop();
+		if (Ui::ProcessSmoothWheelScroll(_tabsScroll, e, true)) return true;
 		const auto y = pixelDelta.y() ? pixelDelta.y() : angleDelta.y();
 		_tabsScroll->scrollToX(_tabsScroll->scrollLeft() - y);
 		return true;

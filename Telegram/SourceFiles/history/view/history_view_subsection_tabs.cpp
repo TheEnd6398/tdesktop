@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_subsection_tabs.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
 #include "apiwrap.h"
 #include "base/qt/qt_key_modifiers.h"
 #include "core/ui_integration.h"
@@ -154,6 +155,7 @@ void SubsectionTabs::setupHorizontal(
 		if (std::abs(pixelDelta.x()) + std::abs(angleDelta.x())) {
 			return false;
 		}
+		if (Ui::ProcessSmoothWheelScroll(scroll, e, true)) return true;
 		const auto y = pixelDelta.y() ? pixelDelta.y() : angleDelta.y();
 		scroll->scrollToX(scroll->scrollLeft() - y);
 		return true;

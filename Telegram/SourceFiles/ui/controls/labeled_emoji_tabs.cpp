@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/controls/labeled_emoji_tabs.h"
 
+#include "ui/widgets/smooth_wheel_scroll.h"
 #include "base/object_ptr.h"
 #include "ui/abstract_button.h"
 #include "ui/effects/ripple_animation.h"
@@ -495,6 +496,7 @@ LabeledEmojiScrollTabs::LabeledEmojiScrollTabs(
 		}
 		const auto y = pixelDelta.y() ? pixelDelta.y() : angleDelta.y();
 		_scrollAnimation.stop();
+		if (Ui::ProcessSmoothWheelScroll(_scroll, e, true)) return true;
 		_scroll->scrollToX(_scroll->scrollLeft() - y);
 		return true;
 	});

@@ -292,3 +292,13 @@ slide uses that same material so handing over to the live panel does not
 change its tint. Click-to-close stays on the existing layer stack. The toolkit
 change is versioned as `fork-patches/0001-full-window-menu-shade.patch` and
 applied idempotently before `lib_ui` is configured; it is not a gitlink repin.
+
+Smooth scrolling now has a default toolkit integration hook after each local
+wheel policy. A local handler that consumes an event keeps priority. The same
+220 ms model and native scroll APIs are reused lazily for all remaining
+ScrollArea and vertical ElasticScroll instances; pixel/phase/modifier input
+continues untouched. Horizontal emoji/filter/topic/search tab handlers compose
+the same model explicitly after their native axis checks and stop their own
+programmatic tab animation first. Power Saving's animation flag also cancels
+wheel motion. The central hook is versioned in
+`fork-patches/0002-default-scroll-wheel-hook.patch`.

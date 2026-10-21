@@ -422,6 +422,10 @@ void MainWindow::ensureLayerCreated() {
 		bodyWidget(),
 		crl::guard(this, [=] { return controller().uiShow(); }));
 
+	Ui::Glass::EnabledValue() | rpl::on_next([=](bool enabled) {
+		_layer->setFullWindowMainMenuShade(enabled);
+	}, _layer->lifetime());
+
 	_layer->hideFinishEvents(
 	) | rpl::filter([=] {
 		return _layer != nullptr; // Last hide finish is sent from destructor.
