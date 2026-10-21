@@ -30,6 +30,9 @@ PinnedBar::PinnedBar(
 , _controller(controller)
 , _shadow(std::make_unique<PlainShadow>(_wrap.parentWidget()))
 , _customEmojiPaused(std::move(customEmojiPaused)) {
+	if (_controller) {
+		_glassBackdrop = Glass::ObserveChatBackdrop(_wrap.entity(), _wrap.entity(), _controller, &_glass);
+	}
 	_wrap.hide(anim::type::instant);
 	_shadow->hide();
 
@@ -45,9 +48,6 @@ PinnedBar::PinnedBar(
 	) | rpl::on_next([=](QRect clip) {
 		auto p = QPainter(_wrap.entity());
 		if (Glass::Enabled()) {
-			if (_controller) {
-				Glass::PrepareChat(_glass, _wrap.entity(), _controller);
-			}
 			_glass.paint(p, _wrap.entity()->rect().marginsRemoved(QMargins(
 				st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)),
 				st::historyPinnedBg->c);

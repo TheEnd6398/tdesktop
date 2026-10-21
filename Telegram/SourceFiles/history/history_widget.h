@@ -970,6 +970,7 @@ private:
 	object_ptr<Ui::InputField> _field;
 	Ui::Glass::Surface _glassComposer;
 	std::unique_ptr<Ui::RpWidget> _glassComposerOverlay;
+	std::unique_ptr<QObject> _glassBackdrop;
 	std::unique_ptr<HistoryView::Controls::RichDraftPreview> _richDraftPreview;
 	base::unique_qptr<Ui::RpWidget> _fieldDisabled;
 	std::unique_ptr<Ui::RpWidget> _sendRestriction;

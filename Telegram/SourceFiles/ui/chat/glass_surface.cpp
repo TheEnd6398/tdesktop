@@ -76,17 +76,21 @@ public:
 	Backdrop(
 		not_null<RpWidget*> target,
 		not_null<QWidget*> source,
-		not_null<Surface*> surface);
+		not_null<Surface*> surface,
+		Window::SessionController *controller = nullptr,
+		QWidget *sampler = nullptr, Fn<QRect()> bounds = {});
 	~Backdrop() override;
 
 private:
 	bool eventFilter(QObject *object, QEvent *event) override;
 	void schedule();
 	void refresh();
-	[[nodiscard]] QRect sourceRect() const;
 
 	const not_null<RpWidget*> _target;
-	const QPointer<QWidget> _source;
+	QPointer<QWidget> _source;
+	const QPointer<QWidget> _sampler;
+	Window::SessionController *_controller = nullptr;
+	Fn<QRect()> _bounds;
 	const not_null<Surface*> _surface;
 	bool _scheduled = false;
 	bool _enabled = false;
@@ -97,12 +101,17 @@ private:
 Backdrop::Backdrop(
 		not_null<RpWidget*> target,
 		not_null<QWidget*> source,
-		not_null<Surface*> surface)
+		not_null<Surface*> surface,
+		Window::SessionController *controller,
+		QWidget *sampler, Fn<QRect()> bounds)
 : QObject(target)
 , _target(target)
 , _source(source)
+, _sampler(sampler)
+, _controller(controller)
+, _bounds(std::move(bounds))
 , _surface(surface) {
-	Expects(!source->isAncestorOf(target));
+	Expects(controller || !source->isAncestorOf(target));
 	QCoreApplication::instance()->installEventFilter(this);
 	QObject::connect(source, &QObject::destroyed, this, [=] {
 		_surface->clear();
@@ -128,31 +137,16 @@ Backdrop::~Backdrop() {
 	}
 }
 
-QRect Backdrop::sourceRect() const {
-	const auto support = st::glassBlurSupport;
-	const auto bounds = _target->rect().marginsAdded(
-		QMargins(support, support, support, support));
-	return bounds.translated(MapToWidget(_target, _source));
-}
-
 bool Backdrop::eventFilter(QObject *object, QEvent *event) {
+	if (!CapturingBackdrop() && _enabled
+		&& event->type() == QEvent::UpdateRequest && object == _target->window()) {
+		refresh();
+		return false;
+	}
 	if (CapturingBackdrop() || _scheduled || !_source || !_enabled || _target->isHidden()) {
 		return false;
 	}
 	switch (event->type()) {
-	case QEvent::Paint: {
-		const auto widget = object->isWidgetType()
-			? static_cast<QWidget*>(object)
-			: nullptr;
-		if (!widget || (widget != _source && !_source->isAncestorOf(widget))) {
-			break;
-		}
-		const auto dirty = static_cast<QPaintEvent*>(event)->rect().translated(
-			MapToWidget(widget, _source));
-		if (dirty.intersects(sourceRect())) {
-			schedule();
-		}
-	} break;
 	case QEvent::Move:
 	case QEvent::Resize:
 	case QEvent::Show:
@@ -178,13 +172,20 @@ void Backdrop::schedule() {
 
 void Backdrop::refresh() {
 	_scheduled = false;
+	if (_controller && _sampler) {
+		_source = ChatSource(_sampler);
+	}
 	if (!_source || _target->isHidden() || _source->isHidden()
 		|| !_enabled || !_target->isVisibleTo(_target->window())
 		|| _target->window()->isHidden()) {
 		return;
 	}
 	const auto before = _surface->checksum();
-	PrepareBackdrop(*_surface, _target, _source.data());
+	if (_controller && _sampler) {
+		PrepareChat(*_surface, _sampler.data(), _controller, _bounds ? _bounds() : QRect());
+	} else {
+		PrepareBackdrop(*_surface, _target, _source.data());
+	}
 	if (_surface->checksum() != before) {
 		_target->update();
 	}
@@ -197,18 +198,27 @@ void PrepareBackdrop(
 		not_null<QWidget*> target,
 		not_null<QWidget*> source) {
 	surface.setTintOpacity(st::glassTintOpacity);
+	surface.setBlurRadius(st::glassBlurRadius);
 	if (!BlurEnabled()) {
 		surface.clear();
 		return;
 	}
 	Expects(!source->isAncestorOf(target));
 	const auto offset = MapToWidget(target, source);
-	const auto support = st::glassBlurSupport;
-	const auto bounds = target->rect().marginsAdded(
-		QMargins(support, support, support, support));
-	surface.prepare(bounds, target->devicePixelRatioF(), [&](QPainter &p, QRect clip) {
+	surface.prepare(target->rect(), target->devicePixelRatioF(), [&](QPainter &p, QRect clip) {
+		p.fillRect(clip, st::windowBg);
 		RenderRegion(p, source, offset, clip);
-	});
+	}, MapToWidget(target, target->window()));
+}
+
+std::unique_ptr<QObject> ObserveChatBackdrop(
+		not_null<RpWidget*> target,
+		not_null<QWidget*> sampler,
+		not_null<Window::SessionController*> controller,
+		not_null<Surface*> surface,
+		Fn<QRect()> bounds) {
+	return std::make_unique<Backdrop>(target, controller->content(), surface,
+		controller, sampler, std::move(bounds));
 }
 
 std::unique_ptr<QObject> ObserveBackdrop(
@@ -404,6 +414,7 @@ void PrepareChat(
 		not_null<Window::SessionController*> controller,
 		QRect bounds) {
 	surface.setTintOpacity(st::glassTintOpacity);
+	surface.setBlurRadius(st::glassBlurRadius);
 	if (!BlurEnabled()) {
 		surface.clear();
 		return;
@@ -414,6 +425,7 @@ void PrepareChat(
 	surface.prepare(bounds.isEmpty() ? widget->rect() : bounds,
 		widget->devicePixelRatioF(),
 		[&](QPainter &p, QRect clip) {
+			p.fillRect(clip, st::windowBg);
 			p.translate(-offset);
 			Window::SectionWidget::PaintBackground(
 				p,
@@ -425,7 +437,7 @@ void PrepareChat(
 			if (const auto source = ChatSource(widget)) {
 				RenderRegion(p, source, MapToWidget(widget, source), clip);
 			}
-		});
+		}, MapToWidget(widget, widget->window()));
 }
 
 } // namespace Ui::Glass

@@ -276,6 +276,7 @@ private:
 	int _leftTaken = 0;
 	int _rightTaken = 0;
 	Ui::Glass::Surface _glass;
+	std::unique_ptr<QObject> _glassBackdrop;
 	float64 _titleShownRatio = 1.;
 	bool _animatingMode = false;
 	std::unique_ptr<Ui::InfiniteRadialAnimation> _connecting;

@@ -22,9 +22,10 @@ class Surface final {
 public:
 	using Source = std::function<void(QPainter &p, QRect clip)>;
 
-	void prepare(QRect bounds, qreal dpr, const Source &source);
+	void prepare(QRect bounds, qreal dpr, const Source &source, QPoint alignment = {});
 	void paint(QPainter &p, QRect rect, QColor tint, int radius = 0) const;
 	void setTintOpacity(qreal opacity);
+	void setBlurRadius(int radius);
 	void clear();
 	[[nodiscard]] quint64 checksum() const;
 
@@ -32,8 +33,9 @@ private:
 	QImage _source;
 	QImage _image;
 	QImage _scratch;
-	QRect _bounds;
+	QRectF _bounds;
 	qreal _tintOpacity = 0.68;
+	int _blurRadius = 8;
 	quint64 _checksum = 0;
 	quint64 _sourceChecksum = 0;
 	bool _prepared = false;

@@ -61,6 +61,13 @@ void PrepareBackdrop(
 	not_null<QWidget*> target,
 	not_null<QWidget*> source);
 
+[[nodiscard]] std::unique_ptr<QObject> ObserveChatBackdrop(
+	not_null<RpWidget*> target,
+	not_null<QWidget*> sampler,
+	not_null<Window::SessionController*> controller,
+	not_null<Surface*> surface,
+	Fn<QRect()> bounds = {});
+
 [[nodiscard]] std::unique_ptr<QObject> ObserveBackdrop(
 	not_null<RpWidget*> target,
 	not_null<QWidget*> source,

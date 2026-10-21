@@ -1452,6 +1452,9 @@ ComposeControls::ComposeControls(
 		}
 	}, _sessionLifetime);
 	if (!_backgroundRect) {
+		if (_regularWindow) {
+			_glassBackdrop = Ui::Glass::ObserveChatBackdrop(_wrap.get(), _wrap.get(), _regularWindow, &_glass);
+		}
 		if (_attachToggle) {
 			Ui::Glass::BindButtonFeedback(_attachToggle);
 		}
@@ -5742,9 +5745,6 @@ void ComposeControls::updateAttachBotsMenu() {
 
 void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
 	if (Ui::Glass::Enabled() && !_backgroundRect) {
-		if (_regularWindow) {
-			Ui::Glass::PrepareChat(_glass, _wrap.get(), _regularWindow);
-		}
 		const auto field = _field->geometry();
 		auto area = QRect(field.x() - st::glassInset,
 			field.y() - _st.padding.top(),

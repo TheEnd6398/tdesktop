@@ -129,6 +129,8 @@ int main(int argc, char **argv) {
 			Check(qRed(red.pixel(center)) > qRed(blue.pixel(center)), "Backdrop did not affect the material.");
 			Check(qBlue(blue.pixel(center)) > qBlue(red.pixel(center)), "Backdrop color diffusion was lost.");
 			Check(qAlpha(red.pixel(0, 0)) == 0, "The surface painted a rectangular background.");
+			Check(red.pixel(QPoint(60 * dpr, 12 * dpr)) == red.pixel(center),
+				"Uniform backdrop/tint faded or changed near the capsule edge.");
 			surface.clear();
 			const auto fallback = Paint(surface, dpr, tint);
 			Check(fallback.pixel(center) == tint.rgba(), "Opaque fallback changed the flat palette tint.");
@@ -137,5 +139,18 @@ int main(int argc, char **argv) {
 			Check(surface.checksum() == 0, "Disabled effects retained a backdrop.");
 		}
 	}
+	auto edge = Ui::Glass::Surface();
+	edge.setTintOpacity(0.);
+	auto captured = QRect();
+	edge.prepare(QRect(10, 10, 100, 40), 1., [&](QPainter &p, QRect clip) {
+		captured = clip;
+		p.fillRect(clip, Qt::white);
+		p.fillRect(QRect(-100, -100, 400, 110), Qt::black);
+	});
+	const auto edgeImage = Paint(edge, 1., Qt::white);
+	Check(captured.top() < 0 && captured.left() < 0,
+		"The blur did not request source pixels outside the capsule.");
+	Check(qRed(edgeImage.pixel(60, 12)) < qRed(edgeImage.pixel(60, 30)),
+		"The capsule edge ignored pixels outside its bounds.");
 	std::cout << "Glass material: backdrop diffusion, light/dark tint, clipping, fallback and five DPRs passed.\n";
 }

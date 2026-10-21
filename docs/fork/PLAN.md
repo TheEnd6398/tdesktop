@@ -272,3 +272,15 @@ composer painting moves onto a masked sibling overlay above the list; header,
 pinned and intermediary containers are masked to their actual controls so
 empty space reaches the list. Backdrop composition paints the wallpaper and
 then the bounded live list region, excluding sibling glass widgets.
+
+Live blur refresh runs on the window's UpdateRequest before backing-store
+painting, reading current list/animation state rather than a previous-frame
+snapshot. Each observer updates its bounded strip only when its output hash
+changes. No timer runs at idle. Capture renders only the list subtree over
+wallpaper, with the existing capture guard suppressing read/view side effects.
+The reduced sample grid is aligned in window coordinates at each DPR. Three
+box passes use retained premultiplied buffers; their full support plus two
+filter pixels is captured beyond the capsule, then cropped only at composition.
+CPU raster strips avoid a separate GL context/widget per capsule and preserve
+the current Qt Widgets architecture. Performance measurements below distinguish
+synthetic strip costs from real authenticated-chat frame costs.

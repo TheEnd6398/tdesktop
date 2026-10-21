@@ -43,16 +43,24 @@ void Surface::clear() {
 	_prepared = false;
 }
 
-void Surface::prepare(QRect bounds, qreal dpr, const Source &source) {
+void Surface::prepare(QRect bounds, qreal dpr, const Source &source, QPoint alignment) {
 	if (!source || bounds.isEmpty()) {
 		clear();
 		return;
 	}
-	_bounds = bounds;
 	const auto scale = std::min(dpr, qreal(2.)) / 4.;
+	const auto radius = std::max(1, int(std::round(_blurRadius * scale)));
+	const auto support = (3 * radius + 2) / scale;
+	const auto expanded = QRectF(bounds).translated(alignment)
+		.adjusted(-support, -support, support, support);
+	const auto left = std::floor(expanded.left() * scale);
+	const auto top = std::floor(expanded.top() * scale);
 	const auto size = QSize(
-		std::max(1, int(std::ceil(bounds.width() * scale))),
-		std::max(1, int(std::ceil(bounds.height() * scale))));
+		int(std::ceil(expanded.right() * scale) - left),
+		int(std::ceil(expanded.bottom() * scale) - top));
+	_bounds = QRectF(left / scale, top / scale, size.width() / scale, size.height() / scale)
+		.translated(-alignment);
+
 	if (_image.size() != size) {
 		_source = QImage(size, QImage::Format_ARGB32_Premultiplied);
 		_image = QImage(size, QImage::Format_ARGB32_Premultiplied);
@@ -62,13 +70,13 @@ void Surface::prepare(QRect bounds, qreal dpr, const Source &source) {
 	_source.fill(Qt::transparent);
 	{
 		auto p = QPainter(&_source);
+		p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 		p.scale(scale, scale);
-		p.translate(-bounds.topLeft());
-		source(p, bounds);
+		p.translate(-_bounds.topLeft());
+		source(p, _bounds.toAlignedRect());
 	}
 	const auto checksum = qHashBits(_source.constBits(), _source.sizeInBytes(),
 		quint64(_source.width()) * 65537 + _source.height());
-	const auto radius = std::max(1, int(std::round(3 * std::min(dpr, qreal(2.)))));
 	if (_prepared && _sourceChecksum == checksum && _radius == radius) {
 		return;
 	}
@@ -103,6 +111,10 @@ void Surface::paint(QPainter &p, QRect rect, QColor tint, int radius) const {
 	}
 	p.fillPath(path, tint);
 	p.restore();
+}
+
+void Surface::setBlurRadius(int radius) {
+	_blurRadius = std::max(0, radius);
 }
 
 void Surface::setTintOpacity(qreal opacity) {

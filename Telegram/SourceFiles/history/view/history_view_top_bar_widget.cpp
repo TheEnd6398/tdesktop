@@ -134,6 +134,7 @@ TopBarWidget::TopBarWidget(
 , _menuToggle(this, st::topBarMenuToggle)
 , _titlePeerText(st::windowMinWidth / 3)
 , _onlineUpdater([=] { updateOnlineDisplay(); }) {
+	_glassBackdrop = Ui::Glass::ObserveChatBackdrop(this, this, _controller, &_glass);
 	setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
 	Ui::Glass::EnabledValue() | rpl::on_next([=] {
 		setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
@@ -585,7 +586,6 @@ QRect TopBarWidget::glassActionsRect() const {
 }
 
 void TopBarWidget::paintGlass(Painter &p) {
-	Ui::Glass::PrepareChat(_glass, this, _controller);
 	if (showSelectedActions() || _searchMode || _selectedShown.animating()
 		|| _searchShown.animating() || _chooseForReportReason) {
 		_glass.paint(p, rect().marginsRemoved(QMargins(

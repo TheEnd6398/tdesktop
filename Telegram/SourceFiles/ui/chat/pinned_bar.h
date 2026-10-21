@@ -61,6 +61,7 @@ private:
 
 	Ui::SlideWrap<> _wrap;
 	Glass::Surface _glass;
+	std::unique_ptr<QObject> _glassBackdrop;
 	Window::SessionController *_controller = nullptr;
 	std::unique_ptr<Ui::MessageBar> _bar;
 

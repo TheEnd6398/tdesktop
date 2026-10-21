@@ -1221,6 +1221,8 @@ HistoryWidget::HistoryWidget(
 		drawField(p, clip.translated(_glassComposerOverlay->pos()));
 	}, _glassComposerOverlay->lifetime());
 	_glassComposerOverlay->hide();
+	_glassBackdrop = Ui::Glass::ObserveChatBackdrop(_glassComposerOverlay.get(), this,
+		controller(), &_glassComposer, [=] { return _glassComposerOverlay->geometry(); });
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
 		updateControlsGeometry();
 		update();
@@ -11313,7 +11315,7 @@ void HistoryWidget::updateGlassComposerGeometry() {
 		|| _previewDrawPreview || _suggestOptions;
 	auto input = _field->geometry().marginsAdded(QMargins(
 		st::glassInset, st::historySendPadding, st::glassInset, st::historySendPadding));
-	for (const auto button : { _attachToggle.data(), _tabbedSelectorToggle.data() }) {
+	for (const auto button : std::array<Ui::RpWidget*, 2>{ _attachToggle.data(), _tabbedSelectorToggle.data() }) {
 		if (!button->isHidden()) input = input.united(button->geometry());
 	}
 	auto bounds = input;
@@ -11361,8 +11363,6 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 	p.setInactive(
 		controller()->isGifPausedAtLeastFor(Window::GifPauseReason::Any));
 	if (Ui::Glass::Enabled()) {
-		Ui::Glass::PrepareChat(_glassComposer, this, controller(),
-			QRect(0, backy, width(), backh));
 		const auto field = _field->geometry();
 		const auto inputHeight = fieldHeight() + 2 * st::historySendPadding;
 		auto full = QRect(field.x() - st::glassInset,
