@@ -8,6 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_chat_section.h"
 
 #include "ui/widgets/smooth_wheel_scroll.h"
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
 
 #include "history/admin_log/history_admin_log_section.h"
 #include "history/view/controls/history_view_top_controls.h"
@@ -467,6 +469,25 @@ ChatWidget::ChatWidget(
 		_scroll.get(),
 		controller->chatStyle(),
 		static_cast<HistoryView::CornerButtonsDelegate*>(this)) {
+	_suggestOverlay = std::make_unique<Ui::RpWidget>(this);
+	struct SuggestGlass {
+		Ui::Glass::Surface surface;
+		std::unique_ptr<QObject> backdrop;
+	};
+	const auto glass = _suggestOverlay->lifetime().make_state<SuggestGlass>();
+	glass->backdrop = Ui::Glass::ObserveChatBackdrop(_suggestOverlay.get(), this,
+		controller, &glass->surface, [=] { return _suggestOverlay->geometry(); });
+	_suggestOverlay->paintRequest() | rpl::on_next([=] {
+		if (!_suggestOptions || !Ui::Glass::Enabled()) return;
+		auto p = QPainter(_suggestOverlay.get());
+		const auto area = _suggestOverlay->rect().marginsRemoved(QMargins(
+			st::glassMargin, st::glassGap, st::glassMargin, st::glassGap));
+		p.translate(-_suggestOverlay->pos());
+		glass->surface.paint(p, area.translated(_suggestOverlay->pos()), st::historyReplyBg->c);
+		p.translate(_suggestOverlay->pos() + area.topLeft());
+		_suggestOptions->paintBar(p, 0, 0, area.width());
+	}, _suggestOverlay->lifetime());
+	_suggestOverlay->hide();
 	controller->chatStyle()->paletteChanged(
 	) | rpl::on_next([=] {
 		_scroll->updateBars();
@@ -3579,6 +3600,7 @@ void ChatWidget::applySuggestOptions(
 		suggestMode);
 	_suggestOptions->updates() | rpl::on_next([=] {
 		update();
+		_suggestOverlay->update();
 		_composeControls->saveFieldToHistoryLocalDraft();
 		refreshTopBarActiveChat();
 	}, _suggestOptions->lifetime());
@@ -4399,7 +4421,8 @@ void ChatWidget::updateControlsGeometry() {
 			top,
 			bottom
 				- tabsBottomSkip
-				- (_suggestOptions ? st::historyReplyHeight : 0));
+				- (_suggestOptions ? st::historyReplyHeight
+					+ (Ui::Glass::Enabled() ? 2 * st::glassGap : 0) : 0));
 		if (_kbScroll && _kbShown && keyboardRowsVisible() && _keyboard) {
 			_keyboard->resizeToWidth(innerWidth, maxFieldHeight);
 			const auto keyboardReserve = std::min(
@@ -4429,8 +4452,10 @@ void ChatWidget::updateControlsGeometry() {
 		}
 	}
 	const auto composeTop = bottom;
+	const auto suggestHeight = st::historyReplyHeight
+		+ (Ui::Glass::Enabled() ? 2 * st::glassGap : 0);
 	if (_suggestOptions) {
-		bottom -= st::historyReplyHeight;
+		bottom -= suggestHeight;
 	}
 	bottom -= tabsBottomSkip;
 
@@ -4451,6 +4476,13 @@ void ChatWidget::updateControlsGeometry() {
 		updateInnerVisibleArea();
 	}
 	_composeControls->move(0, composeTop);
+	_suggestOverlay->setVisible(Ui::Glass::Enabled()
+		&& _suggestOptions && !_bottom->isButtonActive());
+	_suggestOverlay->setGeometry(0, composeTop - suggestHeight, width(), suggestHeight);
+	Ui::Glass::MaskCapsules(_suggestOverlay.get(), {
+		_suggestOverlay->rect().marginsRemoved(QMargins(
+			st::glassMargin, st::glassGap, st::glassMargin, st::glassGap)) });
+	_suggestOverlay->raise();
 	_composeControls->setAutocompleteBoundingRect(Ui::Glass::ChatReadingRect(_scroll.get()));
 	if (_supportAutocomplete) {
 		_supportAutocomplete->setBoundings(Ui::Glass::ChatReadingRect(_scroll.get()));
@@ -4494,12 +4526,12 @@ void ChatWidget::paintEvent(QPaintEvent *e) {
 		return;
 	}
 
-	const auto aboveHeight = _topBar->height();
+	const auto aboveHeight = Ui::Glass::Enabled() ? 0 : _topBar->height();
 	const auto bg = e->rect().intersected(
 		QRect(0, aboveHeight, width(), height() - aboveHeight));
 	SectionWidget::PaintBackground(controller(), _theme.get(), this, bg);
 
-	if (_suggestOptions && !_bottom->isButtonActive()) {
+	if (_suggestOptions && !_bottom->isButtonActive() && !Ui::Glass::Enabled()) {
 		auto p = Painter(this);
 		const auto backy = _composeControlsTop
 			- st::historyReplyHeight;

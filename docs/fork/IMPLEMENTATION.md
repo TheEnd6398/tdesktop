@@ -28,6 +28,10 @@ list-local jump/restore coordinates. Read tracking, preload, selection clamps,
 autocomplete, corner controls, floating players and pull controls use the
 unobscured reading rectangle. Classic composer painting is a masked sibling
 above the list. Reply/edit/forward/link previews retain their separate capsule.
+Modern chat and pinned-section wallpaper also covers the header region.
+Horizontal topic/subsection tabs inside conversations share one masked live
+capsule; the vertical topic sidebar keeps its native layout. Suggested-post
+options use a masked sibling overlay with a matching bottom reading reserve.
 
 Each visible blur strip refreshes at the window UpdateRequest before painting.
 Classic pending message layout is flushed first. Sampling expands beyond the
@@ -84,6 +88,9 @@ and runs `test_glass_material --benchmark`. Its JSON and CPU description are
 uploaded as `LiquidGlass-strip-benchmark-<commit>`. It measures synthetic bounded
 QWidget capture, hashes and filtering; it excludes real Telegram message/media
 painting and final composition. These are preparation costs, not Windows FPS.
+Local optimized synthetic trials on the shared Xeon 8573C measured the three
+960 px chat strips together at 1.39–1.50 ms (DPR 1) and 5.53–5.81 ms (DPR 2),
+before real message/media painting. See PLAN.md for the measurement limits.
 
 The Windows workflow compiles the full client with MSVC and the glass option ON,
 then starts it in a temporary isolated profile and requires a native window and

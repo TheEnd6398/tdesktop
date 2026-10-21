@@ -329,3 +329,26 @@ corner-button subtree is excluded entirely to prevent self capture. Wallpaper
 is mapped in section coordinates, so a small corner button samples the same
 wallpaper scale and position as the full chat. Both classic chat-removal paths
 destroy the owned wrapper as QWidget and clear the old composer surface.
+
+The modern chat and pinned sections now paint wallpaper across the header
+region too, rather than relying on the removed opaque toolbar. In-chat
+horizontal topic/subsection tabs share one masked floating capsule with live
+sampling and no separator line; their native controls and vertical sidebar
+layout are preserved. Their top/bottom reserves follow the actual pill height.
+The modern suggested-post options strip also paints on a masked sibling
+overlay, with its own live surface and reading reserve, instead of leaving
+its informational text under the expanded message viewport.
+
+Local optimized material-only measurements (Qt 6.8.2, Linux, shared 5-CPU
+Xeon Platinum 8573C, three trials of 80 changing frames) put the combined
+960 px header/composer/pinned preparation at 1.39–1.50 ms at DPR 1 and
+5.53–5.81 ms at DPR 2. A 320×760 menu costs 1.03–1.07 / 4.17–4.42 ms
+respectively. This includes synthetic QWidget capture, hashing and the CPU
+filter, excluding Telegram message/media painting and final composition.
+The DPR-2 chat strips consume about 35% of a 16.67 ms frame before that
+additional work; this is a budget estimate, not measured Windows FPS.
+Debug costs were about 21.4 ms for those three strips at DPR 2. CI publishes
+its own optimized benchmark and CPU JSON; real animated-chat costs and lower
+power hardware still require Windows profiling. Opaque Power Saving fallback
+avoids captures. The bounded CPU path is retained rather than adding a GL
+context per capsule or migrating the widget renderer.
