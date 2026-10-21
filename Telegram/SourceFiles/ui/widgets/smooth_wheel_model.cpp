@@ -7,8 +7,9 @@
 
 namespace Ui {
 
-bool IsDiscreteWheel(const QWheelEvent &event) {
-	const auto angle = event.angleDelta();
+bool IsDiscreteWheel(const QWheelEvent &event, bool horizontal) {
+	const auto delta = event.angleDelta();
+	const auto angle = horizontal ? QPoint(delta.y(), delta.x()) : delta;
 	const auto device = event.pointingDevice();
 	return event.pixelDelta().isNull()
 		&& event.phase() == Qt::NoScrollPhase

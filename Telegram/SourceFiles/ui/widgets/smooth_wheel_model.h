@@ -7,7 +7,7 @@ class QWheelEvent;
 
 namespace Ui {
 
-[[nodiscard]] bool IsDiscreteWheel(const QWheelEvent &event);
+[[nodiscard]] bool IsDiscreteWheel(const QWheelEvent &event, bool horizontal = false);
 
 class SmoothWheelModel final {
 public:

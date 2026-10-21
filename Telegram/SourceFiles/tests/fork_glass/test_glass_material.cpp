@@ -2,6 +2,10 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <QtCore/QElapsedTimer>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
 #include <QtGui/QPaintEvent>
@@ -14,6 +18,7 @@ public:
 	QRect painted;
 	bool capturing = false;
 	bool fill = true;
+	QColor background = Qt::red;
 
 private:
 	void paintEvent(QPaintEvent *event) override;
@@ -25,7 +30,7 @@ void Pattern::paintEvent(QPaintEvent *event) {
 	capturing = Ui::Glass::CapturingBackdrop();
 	auto p = QPainter(this);
 	if (fill) {
-		p.fillRect(event->rect(), Qt::red);
+		p.fillRect(event->rect(), background);
 	}
 	p.fillRect(QRect(100, 4000, 20, 40), Qt::green);
 	p.fillRect(QRect(120, 4000, 20, 40), Qt::blue);
@@ -49,11 +54,50 @@ QImage Paint(Ui::Glass::Surface &surface, qreal dpr, QColor tint) {
 	return image;
 }
 
+int Benchmark() {
+	auto pattern = Pattern();
+	pattern.resize(960, 10000);
+	auto cases = QJsonArray();
+	for (const auto dpr : { 1., 2. }) {
+		for (const auto size : { QSize(960, 70), QSize(960, 80), QSize(960, 62), QSize(320, 760) }) {
+			auto surface = Ui::Glass::Surface();
+			auto captured = QRect();
+			const auto source = [&](QPainter &p, QRect clip) {
+				captured = clip;
+				Ui::Glass::RenderRegion(p, &pattern, QPoint(0, 4000), clip);
+			};
+			const auto rect = QRect(QPoint(), size);
+			surface.prepare(rect, dpr, source);
+			auto timer = QElapsedTimer();
+			timer.start();
+			for (auto i = 0; i != 80; ++i) {
+				pattern.background = QColor(i * 3 % 255, i * 7 % 255, i * 11 % 255);
+				surface.prepare(rect, dpr, source);
+			}
+			const auto changed = timer.nsecsElapsed() / 80000000.;
+			timer.restart();
+			for (auto i = 0; i != 80; ++i) surface.prepare(rect, dpr, source);
+			const auto unchanged = timer.nsecsElapsed() / 80000000.;
+			cases.append(QJsonObject{
+				{ "width", size.width() }, { "height", size.height() }, { "dpr", dpr },
+				{ "expanded_width", captured.width() }, { "expanded_height", captured.height() },
+				{ "changed_ms", changed }, { "unchanged_ms", unchanged },
+			});
+		}
+	}
+	std::cout << QJsonDocument(QJsonObject{
+		{ "kind", "synthetic QWidget capture and strip filter; excludes Telegram message painting and composition" },
+		{ "qt", QT_VERSION_STR }, { "iterations", 80 }, { "cases", cases },
+	}).toJson(QJsonDocument::Compact).constData() << '\n';
+	return 0;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
 	qputenv("QT_QPA_PLATFORM", "offscreen");
 	auto app = QApplication(argc, argv);
+	if (app.arguments().contains("--benchmark")) return Benchmark();
 	auto root = QWidget();
 	auto left = QWidget(&root);
 	auto right = QWidget(&root);

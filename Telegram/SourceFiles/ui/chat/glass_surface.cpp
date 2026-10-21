@@ -29,6 +29,24 @@ rpl::event_stream<bool> EnabledChanges;
 constexpr auto kHoverDuration = crl::time(140);
 constexpr auto kPressDuration = crl::time(90);
 
+class ChatPreparation final : public QObject {
+public:
+	ChatPreparation(not_null<RpWidget*> owner, Fn<void()> prepare)
+	: QObject(owner), _prepare(std::move(prepare)) {
+		setObjectName(u"liquidGlassPrepareLayout"_q);
+	}
+	void run() {
+		if (_active) return;
+		_active = true;
+		const auto weak = QPointer<ChatPreparation>(this);
+		_prepare();
+		if (weak) _active = false;
+	}
+private:
+	Fn<void()> _prepare;
+	bool _active = false;
+};
+
 QWidget *ChatSource(QWidget *target) {
 	for (auto widget = target; widget; widget = widget->parentWidget()) {
 		const auto object = widget->property("forkChatScroll").value<QObject*>();
@@ -152,7 +170,7 @@ void Backdrop::refresh() {
 	if (_controller && _sampler) {
 		_source = ChatSource(_sampler);
 	}
-	if (!_source) {
+	if (!_source || !_source->isVisibleTo(_source->window())) {
 		const auto changed = _surface->checksum() != 0;
 		_surface->clear();
 		if (changed) _target->update();
@@ -337,6 +355,10 @@ const style::ScrollArea &TransparentScrollStyle(
 #endif
 }
 
+void SetChatBackdropPreparation(not_null<RpWidget*> owner, Fn<void()> prepare) {
+	new ChatPreparation(owner, std::move(prepare));
+}
+
 object_ptr<QWidget> WrapChatContent(object_ptr<RpWidget> content) {
 	const auto parent = content->parentWidget();
 	return object_ptr<ChatContentInsets>(parent, content.release());
@@ -417,6 +439,14 @@ void PrepareChat(
 		not_null<QWidget*> widget,
 		not_null<Window::SessionController*> controller,
 		QRect bounds) {
+	for (auto parent = widget.get(); parent; parent = parent->parentWidget()) {
+		const auto object = parent->findChild<QObject*>(u"liquidGlassPrepareLayout"_q,
+			Qt::FindDirectChildrenOnly);
+		if (const auto preparation = dynamic_cast<ChatPreparation*>(object)) {
+			preparation->run();
+			break;
+		}
+	}
 	surface.setTintOpacity(st::glassTintOpacity);
 	surface.setBlurRadius(st::glassBlurRadius);
 	if (!BlurEnabled()) {

@@ -34,6 +34,7 @@ void SetEnabled(bool enabled);
 [[nodiscard]] bool BlurEnabled();
 [[nodiscard]] QRect ButtonRect(QRect rect);
 void BindButtonFeedback(not_null<AbstractButton*> button);
+void SetChatBackdropPreparation(not_null<RpWidget*> owner, Fn<void()> prepare);
 [[nodiscard]] const style::InputField &FieldStyle(
 	const style::InputField &original,
 	rpl::lifetime &lifetime);

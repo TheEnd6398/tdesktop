@@ -49,11 +49,11 @@ private:
 
 };
 
-int WheelStep(not_null<Ui::ScrollArea*> scroll) {
-	return scroll->verticalScrollBar()->singleStep();
+int WheelStep(not_null<Ui::ScrollArea*> scroll, bool horizontal) {
+	return (horizontal ? scroll->horizontalScrollBar() : scroll->verticalScrollBar())->singleStep();
 }
 
-int WheelStep(not_null<Ui::ElasticScroll*>) {
+int WheelStep(not_null<Ui::ElasticScroll*>, bool) {
 	return st::glassWheelStep;
 }
 
@@ -126,7 +126,7 @@ void WheelMotion<Scroll>::cancel() {
 
 template <typename Scroll>
 bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
-	if (!_enabled || anim::Disabled() || !IsDiscreteWheel(*event)
+	if (!_enabled || anim::Disabled() || !(IsDiscreteWheel(*event) || (_horizontal && IsDiscreteWheel(*event, true)))
 		|| _scroll->isHidden() || !_scroll->isVisibleTo(_scroll->window())
 		|| _scroll->window()->isHidden()) {
 		cancel();
@@ -135,8 +135,10 @@ bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
 	const auto lines = QApplication::wheelScrollLines();
 	const auto step = (lines < 0)
 		? double(_scroll->height())
-		: double(lines) * WheelStep(_scroll);
-	const auto distance = -double(event->angleDelta().y()) * (_horizontal ? 1. : step / 120.);
+		: double(lines) * WheelStep(_scroll, _horizontal);
+	const auto nativeHorizontal = _horizontal && IsDiscreteWheel(*event, true);
+	const auto distance = -double(nativeHorizontal ? event->angleDelta().x() : event->angleDelta().y())
+		* ((_horizontal && !nativeHorizontal) ? 1. : step / 120.);
 	const auto position = Position(_scroll, _horizontal);
 	const auto maximum = std::max(0, Maximum(_scroll, _horizontal));
 	if (!step || position < 0 || position > maximum
@@ -236,7 +238,8 @@ bool Process(not_null<Scroll*> scroll, not_null<QWheelEvent*> event, bool horizo
 	const auto name = horizontal ? u"liquidGlassHorizontalWheel"_q : u"liquidGlassWheel"_q;
 	auto state = dynamic_cast<WheelMotionBase*>(scroll->template findChild<QObject*>(
 		name, Qt::FindDirectChildrenOnly));
-	if (!IsDiscreteWheel(*event) || !Maximum(scroll, horizontal)) {
+	if (!(IsDiscreteWheel(*event) || (horizontal && IsDiscreteWheel(*event, true)))
+		|| !Maximum(scroll, horizontal)) {
 		if (state) state->cancel();
 		return false;
 	}
@@ -259,8 +262,13 @@ bool ProcessSmoothWheelScroll(
 		not_null<QWheelEvent*> event,
 		bool horizontal) {
 #ifdef TDESKTOP_FORK_LIQUID_GLASS
+	if (!IsDiscreteWheel(*event) && !IsDiscreteWheel(*event, true)) {
+		ResetSmoothWheelScroll(scroll);
+		return false;
+	}
 	if (const auto area = dynamic_cast<ScrollArea*>(scroll.get())) {
-		return Process(not_null<ScrollArea*>(area), event, horizontal);
+		const auto axis = horizontal || (IsDiscreteWheel(*event, true) && area->scrollLeftMax() > 0);
+		return Process(not_null<ScrollArea*>(area), event, axis);
 	} else if (!horizontal) {
 		if (const auto elastic = dynamic_cast<ElasticScroll*>(scroll.get())) {
 			return Process(not_null<ElasticScroll*>(elastic), event, false);
@@ -271,10 +279,9 @@ bool ProcessSmoothWheelScroll(
 }
 
 void ResetSmoothWheelScroll(not_null<QWidget*> scroll) {
-	const auto object = scroll->findChild<QObject*>(u"liquidGlassWheel"_q,
-		Qt::FindDirectChildrenOnly);
-	if (const auto state = dynamic_cast<WheelMotionBase*>(object)) {
-		state->cancel();
+	for (const auto name : { u"liquidGlassWheel"_q, u"liquidGlassHorizontalWheel"_q }) {
+		const auto object = scroll->findChild<QObject*>(name, Qt::FindDirectChildrenOnly);
+		if (const auto state = dynamic_cast<WheelMotionBase*>(object)) state->cancel();
 	}
 }
 

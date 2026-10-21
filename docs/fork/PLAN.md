@@ -311,3 +311,14 @@ saved position has been restored. Share-selector anchors map through the list
 itself rather than assuming its old direct scroll parent. Grouped header
 width animates for 140 ms using the existing animation clock; title clipping
 and hit regions follow the same width, with instant reduced-motion fallback.
+
+Before a classic-history capture, pending message layout is flushed using the
+same updateListSize path as native painting. This prevents sampling the
+wallpaper-only early return of a list with pending resize work. Blur accesses
+retained image storage once per pass, instead of asking QImage for a scanline
+on every pixel. The focused CI job also runs an optimized synthetic strip
+benchmark with `test_glass_material --benchmark`; it measures bounded QWidget
+capture, hashing and filtering, not Telegram message rendering or Windows FPS.
+Native horizontal mouse wheels reuse the same easing, while both axes cancel
+immediately on pixel/phased/modified input. The original vertical curve,
+duration and distance calculation stay unchanged.

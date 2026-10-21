@@ -43,6 +43,16 @@ int main(int argc, char **argv) {
 		Check(!accepts({}, { 0, 120 }, Qt::NoScrollPhase, modifier, &mouse), "Modified wheel input was intercepted.");
 	}
 
+	const auto horizontal = QWheelEvent(QPointF(), QPointF(), {}, { 120, 0 },
+		Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false,
+		Qt::MouseEventNotSynthesized, &mouse);
+	Check(Ui::IsDiscreteWheel(horizontal, true), "Native horizontal mouse detents were rejected.");
+	Check(!Ui::IsDiscreteWheel(horizontal), "Horizontal input entered the vertical easing path.");
+	const auto horizontalPad = QWheelEvent(QPointF(), QPointF(), { 8, 0 }, { 120, 0 },
+		Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false,
+		Qt::MouseEventNotSynthesized, &touchpad);
+	Check(!Ui::IsDiscreteWheel(horizontalPad, true), "Horizontal touchpad input was double animated.");
+
 	auto motion = Ui::SmoothWheelModel(220);
 	Check(motion.scrollBy(60., 100, 1000, 0), "Wheel input was not consumed.");
 	auto position = 100;

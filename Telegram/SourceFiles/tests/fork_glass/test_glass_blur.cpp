@@ -1,5 +1,6 @@
 #include "ui/chat/glass_blur.h"
 
+#include <QtCore/QByteArray>
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
@@ -67,6 +68,22 @@ int main() {
 			Check(image == expected, "Blur differs from the reference at edges or alpha.");
 			Check(image.constBits() == imageStorage, "Image storage was reallocated.");
 			Check(scratch.constBits() == scratchStorage, "Scratch storage was reallocated.");
+		}
+	}
+	auto storage = QByteArray(64 * 17, char(0x5A));
+	auto padded = QImage(reinterpret_cast<uchar*>(storage.data()), 5, 17, 64,
+		QImage::Format_ARGB32_Premultiplied);
+	for (auto y = 0; y != 17; ++y) {
+		for (auto x = 0; x != 5; ++x) padded.setPixel(x, y, qRgb(x * 40, y * 12, 80));
+	}
+	const auto expected = Reference(padded.copy(), 3);
+	Ui::Glass::Blur(padded, scratch, 3);
+	for (auto y = 0; y != 17; ++y) {
+		for (auto x = 0; x != 5; ++x) {
+			Check(padded.pixel(x, y) == expected.pixel(x, y), "Padded-row blur changed pixel values.");
+		}
+		for (auto byte = 20; byte != 64; ++byte) {
+			Check(storage.at(y * 64 + byte) == char(0x5A), "Blur overwrote row padding.");
 		}
 	}
 	std::cout << "Glass blur: empty, thin strips, alpha, edges and buffer reuse passed.\n";

@@ -138,6 +138,7 @@ TopBarWidget::TopBarWidget(
 	_glassBackdrop = Ui::Glass::ObserveChatBackdrop(this, this, _controller, &_glass);
 	setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
 	Ui::Glass::EnabledValue() | rpl::on_next([=] {
+		_glassActionsWidth.stop();
 		setAttribute(Qt::WA_OpaquePaintEvent, !Ui::Glass::Enabled());
 		resizeToWidth(width());
 		updateControlsGeometry();

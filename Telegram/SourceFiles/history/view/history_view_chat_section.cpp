@@ -4474,7 +4474,7 @@ void ChatWidget::updateSubsectionTabsGeometry() {
 		return;
 	}
 	const auto subsectionTabsTop = _topBar->bottomNoMargins();
-	const auto scrollBottom = _scroll->y() + Ui::Glass::ChatReadingHeight(_scroll.get());
+	const auto scrollBottom = Ui::Glass::ChatReadingRect(_scroll.get()).bottom() + 1;
 	const auto areaHeight = scrollBottom
 		+ _subsectionTabs->bottomSkip()
 		- subsectionTabsTop;

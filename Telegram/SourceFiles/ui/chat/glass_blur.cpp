@@ -23,12 +23,14 @@ void Blur(QImage &image, QImage &scratch, int radius) {
 			auto &to = axis ? image : scratch;
 			const auto length = axis ? height : width;
 			const auto lines = axis ? width : height;
+			const auto input = reinterpret_cast<const QRgb*>(from.constBits());
+			const auto output = reinterpret_cast<QRgb*>(to.bits());
+			const auto inputStride = from.bytesPerLine() / sizeof(QRgb);
+			const auto outputStride = to.bytesPerLine() / sizeof(QRgb);
 			for (auto line = 0; line != lines; ++line) {
 				const auto pixel = [&](int position) {
 					position = std::clamp(position, 0, length - 1);
-					const auto row = reinterpret_cast<const QRgb*>(
-						from.constScanLine(axis ? position : line));
-					return row[axis ? line : position];
+					return input[(axis ? position : line) * inputStride + (axis ? line : position)];
 				};
 				auto red = 0;
 				auto green = 0;
@@ -44,9 +46,7 @@ void Blur(QImage &image, QImage &scratch, int radius) {
 					add(pixel(i), 1);
 				}
 				for (auto i = 0; i != length; ++i) {
-					const auto row = reinterpret_cast<QRgb*>(
-						to.scanLine(axis ? i : line));
-					row[axis ? line : i] = qRgba(
+					output[(axis ? i : line) * outputStride + (axis ? line : i)] = qRgba(
 						red / samples,
 						green / samples,
 						blue / samples,

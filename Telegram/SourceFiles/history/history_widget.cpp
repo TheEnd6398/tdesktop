@@ -1220,10 +1220,13 @@ HistoryWidget::HistoryWidget(
 		p.translate(-_glassComposerOverlay->pos());
 		drawField(p, clip.translated(_glassComposerOverlay->pos()));
 	}, _glassComposerOverlay->lifetime());
+	Ui::Glass::SetChatBackdropPreparation(this, [=] {
+		if (_list && hasPendingResizedItems()) updateListSize();
+	});
 	_glassComposerOverlay->setMouseTracking(true);
 	_glassComposerOverlay->hide();
 	_glassBackdrop = Ui::Glass::ObserveChatBackdrop(_glassComposerOverlay.get(), this,
-		controller(), &_glassComposer, [=] { return _glassComposerOverlay->geometry(); });
+		controller, &_glassComposer, [=] { return _glassComposerOverlay->geometry(); });
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
 		updateControlsGeometry();
 		update();
@@ -8706,7 +8709,7 @@ void HistoryWidget::updateHistoryGeometry(
 	}
 	if (_subsectionTabs) {
 		const auto tabsBottomSkip = _subsectionTabs->bottomSkip();
-		const auto scrollBottom = _scroll->y() + newScrollHeight;
+		const auto scrollBottom = Ui::Glass::ChatReadingRect(_scroll).bottom() + 1;
 		const auto areaHeight = scrollBottom
 			+ tabsBottomSkip
 			- subsectionTabsTop;
