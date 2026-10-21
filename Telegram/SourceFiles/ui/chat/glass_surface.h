@@ -44,7 +44,7 @@ void BindButtonFeedback(not_null<AbstractButton*> button);
 	const style::ScrollArea &original,
 	rpl::lifetime &lifetime);
 
-[[nodiscard]] object_ptr<RpWidget> WrapChatContent(object_ptr<RpWidget> content);
+[[nodiscard]] object_ptr<QWidget> WrapChatContent(object_ptr<RpWidget> content);
 void SetChatReadingGeometry(not_null<ElasticScroll*> scroll, QRect reading, int top, int bottom);
 [[nodiscard]] int ChatReadingHeight(not_null<ElasticScroll*> scroll);
 [[nodiscard]] QRect ChatReadingRect(not_null<ElasticScroll*> scroll);

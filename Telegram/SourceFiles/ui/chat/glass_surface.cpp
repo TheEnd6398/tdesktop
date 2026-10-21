@@ -1,4 +1,5 @@
 #include "ui/chat/glass_surface.h"
+#include "ui/chat/chat_content_insets.h"
 
 #include "core/application.h"
 #include "core/core_settings.h"
@@ -27,32 +28,6 @@ rpl::event_stream<bool> EnabledChanges;
 
 constexpr auto kHoverDuration = crl::time(140);
 constexpr auto kPressDuration = crl::time(90);
-
-class ChatContent final : public RpWidget {
-public:
-	ChatContent(QWidget *parent, object_ptr<RpWidget> content)
-	: RpWidget(parent), _content(std::move(content)) {
-		_content->setParent(this);
-		_content->show();
-		_content->sizeValue() | rpl::on_next([=] { refresh(); }, lifetime());
-	}
-	void setInsets(int top, int bottom) {
-		_top = top;
-		_bottom = bottom;
-		refresh();
-	}
-	[[nodiscard]] int reserve() const { return _top + _bottom; }
-	[[nodiscard]] int top() const { return _top; }
-	[[nodiscard]] int bottom() const { return _bottom; }
-private:
-	void refresh() {
-		_content->move(0, _top);
-		resize(_content->width(), _content->height() + reserve());
-	}
-	object_ptr<RpWidget> _content;
-	int _top = 0;
-	int _bottom = 0;
-};
 
 QWidget *ChatSource(QWidget *target) {
 	for (auto widget = target; widget; widget = widget->parentWidget()) {
@@ -177,6 +152,12 @@ void Backdrop::refresh() {
 	if (_controller && _sampler) {
 		_source = ChatSource(_sampler);
 	}
+	if (!_source) {
+		const auto changed = _surface->checksum() != 0;
+		_surface->clear();
+		if (changed) _target->update();
+		return;
+	}
 	if (!_source || _target->isHidden() || _source->isHidden()
 		|| !_enabled || !_target->isVisibleTo(_target->window())
 		|| _target->window()->isHidden()) {
@@ -200,6 +181,14 @@ void PrepareBackdrop(
 		not_null<QWidget*> target,
 		not_null<QWidget*> source,
 		QColor shade) {
+	if (ChatSource(target) == source) {
+		for (auto parent = target->parentWidget(); parent; parent = parent->parentWidget()) {
+			if (const auto section = dynamic_cast<Window::AbstractSectionWidget*>(parent)) {
+				PrepareChat(surface, target, section->controller());
+				return;
+			}
+		}
+	}
 	surface.setTintOpacity(st::glassTintOpacity);
 	surface.setBlurRadius(st::glassBlurRadius);
 	if (!BlurEnabled()) {
@@ -348,26 +337,35 @@ const style::ScrollArea &TransparentScrollStyle(
 #endif
 }
 
-object_ptr<RpWidget> WrapChatContent(object_ptr<RpWidget> content) {
-	return object_ptr<ChatContent>(content->parentWidget(), std::move(content));
+object_ptr<QWidget> WrapChatContent(object_ptr<RpWidget> content) {
+	const auto parent = content->parentWidget();
+	return object_ptr<ChatContentInsets>(parent, content.release());
 }
 
 void SetChatReadingGeometry(not_null<ElasticScroll*> scroll, QRect reading, int top, int bottom) {
-	if (const auto content = dynamic_cast<ChatContent*>(scroll->widget())) {
+	if (const auto content = dynamic_cast<ChatContentInsets*>(scroll->widget())) {
 		content->setInsets(top, bottom);
 	}
-	scroll->parentWidget()->setProperty("forkChatScroll", QVariant::fromValue<QObject*>(scroll));
+	const auto parent = scroll->parentWidget();
+	if (parent->property("forkChatScroll").value<QObject*>() != scroll.get()) {
+		QObject::connect(scroll, &QObject::destroyed, parent, [parent, pointer = scroll.get()] {
+			if (parent->property("forkChatScroll").value<QObject*>() == pointer) {
+				parent->setProperty("forkChatScroll", QVariant());
+			}
+		});
+		parent->setProperty("forkChatScroll", QVariant::fromValue<QObject*>(scroll));
+	}
 	scroll->setGeometry(reading.adjusted(0, -top, 0, bottom));
 	scroll->lower();
 }
 
 int ChatReadingHeight(not_null<ElasticScroll*> scroll) {
-	const auto content = dynamic_cast<ChatContent*>(scroll->widget());
+	const auto content = dynamic_cast<ChatContentInsets*>(scroll->widget());
 	return std::max(0, scroll->height() - (content ? content->reserve() : 0));
 }
 
 QRect ChatReadingRect(not_null<ElasticScroll*> scroll) {
-	const auto content = dynamic_cast<ChatContent*>(scroll->widget());
+	const auto content = dynamic_cast<ChatContentInsets*>(scroll->widget());
 	return content
 		? scroll->geometry().adjusted(0, content->top(), 0, -content->bottom())
 		: scroll->geometry();

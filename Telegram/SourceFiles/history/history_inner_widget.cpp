@@ -2845,7 +2845,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				this,
 				_controller->uiShow(),
 				item->fullId(),
-				parentWidget()->mapToGlobal(QPoint(right, top)));
+				mapToGlobal(QPoint(right, top + _visibleAreaTop)));
 			return;
 		}
 	}

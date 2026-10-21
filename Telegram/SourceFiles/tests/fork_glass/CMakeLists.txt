@@ -25,3 +25,8 @@ add_executable(test_smooth_wheel
 target_include_directories(test_smooth_wheel PRIVATE ../..)
 target_link_libraries(test_smooth_wheel PRIVATE Qt6::Gui Qt6::Widgets)
 add_test(NAME smooth_wheel COMMAND test_smooth_wheel)
+
+add_executable(test_chat_insets test_chat_insets.cpp ../../ui/chat/chat_content_insets.cpp)
+target_include_directories(test_chat_insets PRIVATE ../..)
+target_link_libraries(test_chat_insets PRIVATE Qt6::Widgets)
+add_test(NAME chat_insets COMMAND test_chat_insets)

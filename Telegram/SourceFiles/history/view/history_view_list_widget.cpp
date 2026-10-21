@@ -4061,7 +4061,7 @@ void ListWidget::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				this,
 				controller()->uiShow(),
 				overItem->fullId(),
-				parentWidget()->mapToGlobal(QPoint(right, top)));
+				mapToGlobal(QPoint(right, top + _visibleTop)));
 			return;
 		}
 	}

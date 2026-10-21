@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_top_bar_widget.h"
 
+#include <cmath>
 #include "history/history.h"
 #include "history/view/history_view_send_action.h"
 #include "boxes/add_contact_box.h"
@@ -142,7 +143,11 @@ TopBarWidget::TopBarWidget(
 		updateControlsGeometry();
 		update();
 	}, lifetime());
-	PowerSaving::Changes() | rpl::on_next([=] { update(); }, lifetime());
+	PowerSaving::Changes() | rpl::on_next([=] {
+		_glassActionsWidth.stop();
+		updateControlsGeometry();
+		update();
+	}, lifetime());
 	for (const auto button : { _back.data(), _cancelChoose.data(),
 		_call.data(), _groupCall.data(), _search.data(),
 		_infoToggle.data(), _menuToggle.data() }) {
@@ -570,17 +575,23 @@ QRect TopBarWidget::glassTitleRect() const {
 	return myrtlrect(
 		left,
 		st::glassGap,
-		std::max(0, width() - left - _rightTaken - st::glassGap),
+		std::max(0, width() - left - _rightTaken - st::glassGap
+			- glassActionsRect().width() + glassActionsRect(false).width()),
 		st::topBarHeight);
 }
 
-QRect TopBarWidget::glassActionsRect() const {
+QRect TopBarWidget::glassActionsRect(bool animated) const {
 	auto result = QRect();
 	for (const auto button : { _call.data(), _groupCall.data(),
 		_search.data(), _infoToggle.data(), _menuToggle.data() }) {
 		if (!button->isHidden()) {
 			result = result.united(button->geometry());
 		}
+	}
+	if (animated && _glassActionsWidth.animating() && !result.isEmpty()) {
+		const auto size = int(std::round(_glassActionsWidth.value(result.width())));
+		if (style::RightToLeft()) result.setRight(result.left() + size - 1);
+		else result.setLeft(result.right() - size + 1);
 	}
 	return result;
 }
@@ -615,7 +626,9 @@ void TopBarWidget::paintTopBar(Painter &p) {
 		- _rightTaken
 		- nameleft
 		- st::topBarNameRightPadding
-		- (Ui::Glass::Enabled() ? st::glassGap : 0);
+		- (Ui::Glass::Enabled()
+			? st::glassGap + glassActionsRect().width() - glassActionsRect(false).width()
+			: 0);
 	auto statuswidth = namewidth;
 
 	if (_chooseForReportReason) {
@@ -1388,6 +1401,20 @@ void TopBarWidget::updateControlsGeometry() {
 		_rightTaken += _search->width() + (glass ? 0 : st::topBarCallSkip);
 	}
 
+	const auto actionsWidth = glassActionsRect(false).width();
+	if (actionsWidth != _glassActionsTargetWidth) {
+		const auto previous = _glassActionsWidth.value(_glassActionsTargetWidth);
+		const auto animate = glass && _glassActionsTargetWidth && actionsWidth
+			&& !anim::Disabled() && !PowerSaving::On(PowerSaving::kAnimations);
+		_glassActionsTargetWidth = actionsWidth;
+		if (animate) {
+			_glassActionsWidth.start([=] { updateControlsGeometry(); update(); },
+				previous, actionsWidth, crl::time(140), anim::easeOutCubic);
+		} else {
+			_glassActionsWidth.stop();
+		}
+	}
+
 	if (glass) {
 		auto areas = std::vector<QRect>{ glassTitleRect(), glassActionsRect() };
 		if (showSelectedActions() || _searchMode || _selectedShown.animating()
@@ -1656,7 +1683,7 @@ bool TopBarWidget::toggleSearch(bool shown, anim::type animated) {
 	}
 	_searchMode = shown;
 	if (shown && !_searchField) {
-		_searchField.create(this, st::dialogsFilter, tr::lng_dlg_filter());
+		_searchField.create(this, Ui::Glass::FieldStyle(st::dialogsFilter, lifetime()), tr::lng_dlg_filter());
 		_searchField->setFocusPolicy(Qt::StrongFocus);
 		_searchField->customUpDown(true);
 		_searchField->show();

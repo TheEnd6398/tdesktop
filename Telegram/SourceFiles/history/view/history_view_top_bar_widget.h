@@ -192,7 +192,7 @@ private:
 	void paintTopBar(Painter &p);
 	void paintGlass(Painter &p);
 	[[nodiscard]] QRect glassTitleRect() const;
-	[[nodiscard]] QRect glassActionsRect() const;
+	[[nodiscard]] QRect glassActionsRect(bool animated = true) const;
 	[[nodiscard]] PeerData *titleNamePeer() const;
 	void paintStatus(
 		Painter &p,
@@ -275,6 +275,8 @@ private:
 	bool _titlePeerTextOnline = false;
 	int _leftTaken = 0;
 	int _rightTaken = 0;
+	int _glassActionsTargetWidth = 0;
+	Ui::Animations::Simple _glassActionsWidth;
 	Ui::Glass::Surface _glass;
 	std::unique_ptr<QObject> _glassBackdrop;
 	float64 _titleShownRatio = 1.;

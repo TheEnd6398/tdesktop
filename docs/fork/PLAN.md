@@ -302,3 +302,12 @@ the same model explicitly after their native axis checks and stop their own
 programmatic tab animation first. Power Saving's animation flag also cancels
 wheel motion. The central hook is versioned in
 `fork-patches/0002-default-scroll-wheel-hook.patch`.
+
+Inset regression checks instantiate the production Qt content wrapper and
+exercise unchanged scroll range, message anchors, bottom padding, multiline
+footer growth, layout-off coordinates and short histories. The classic
+layout transaction suppresses intermediate scroll/read updates until its
+saved position has been restored. Share-selector anchors map through the list
+itself rather than assuming its old direct scroll parent. Grouped header
+width animates for 140 ms using the existing animation clock; title clipping
+and hit regions follow the same width, with instant reduced-motion fallback.

@@ -90,7 +90,7 @@ void Surface::prepare(QRect bounds, qreal dpr, const Source &source, QPoint alig
 }
 
 void Surface::paint(QPainter &p, QRect rect, QColor tint, int radius) const {
-	if (rect.isEmpty()) {
+	if (rect.isEmpty() || CapturingBackdrop()) {
 		return;
 	}
 	p.save();

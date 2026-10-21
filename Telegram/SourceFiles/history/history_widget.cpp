@@ -1220,6 +1220,7 @@ HistoryWidget::HistoryWidget(
 		p.translate(-_glassComposerOverlay->pos());
 		drawField(p, clip.translated(_glassComposerOverlay->pos()));
 	}, _glassComposerOverlay->lifetime());
+	_glassComposerOverlay->setMouseTracking(true);
 	_glassComposerOverlay->hide();
 	_glassBackdrop = Ui::Glass::ObserveChatBackdrop(_glassComposerOverlay.get(), this,
 		controller(), &_glassComposer, [=] { return _glassComposerOverlay->geometry(); });
@@ -5325,6 +5326,7 @@ void HistoryWidget::delayedShowAt(
 }
 
 void HistoryWidget::handleScroll() {
+	if (_glassLayoutTransaction) return;
 	if (!_itemsRevealHeight) {
 		preloadHistoryIfNeeded();
 	}
@@ -5363,6 +5365,7 @@ bool HistoryWidget::isItemCompletelyHidden(HistoryItem *item) const {
 }
 
 void HistoryWidget::visibleAreaUpdated() {
+	if (_glassLayoutTransaction) return;
 	if (_list && !_firstLoadRequest && !_scroll->isHidden()) {
 		const auto scrollTop = _scroll->scrollTop();
 		const auto scrollBottom = scrollTop + Ui::Glass::ChatReadingHeight(_scroll);
@@ -8602,6 +8605,10 @@ void HistoryWidget::updateHistoryGeometry(
 		return;
 	}
 
+	if (_glassLayoutTransaction) return;
+	_glassLayoutTransaction = true;
+	const auto layoutGuard = gsl::finally([&] { _glassLayoutTransaction = false; });
+
 	const auto newScrollWidth = width()
 		- (_subsectionTabs ? _subsectionTabs->leftSkip() : 0);
 	const auto subsectionTabsTop = _topBar->bottomNoMargins();
@@ -8738,7 +8745,9 @@ void HistoryWidget::updateHistoryGeometry(
 		}
 	}
 	const auto toY = std::clamp(newScrollTop, 0, _scroll->scrollTopMax());
+	_glassLayoutTransaction = false;
 	synteticScrollToY(toY);
+	visibleAreaUpdated();
 	if (initial && _showAtMsgId) {
 		const auto timestamp = base::take(_showAtMsgParams.videoTimestamp);
 		if (timestamp.has_value()) {
