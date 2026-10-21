@@ -61,6 +61,12 @@ jobs:
           ctest --test-dir out/glass-benchmark -R "glass_(blur|material)" --output-on-failure
           out/glass-benchmark/test_glass_material --benchmark | tee out/blur-benchmark.json
           lscpu --json > out/benchmark-cpu.json
+          python3 - <<'PYCPU'
+          import json
+          for row in json.load(open('out/benchmark-cpu.json'))['lscpu']:
+              if row['field'] in ('Architecture:', 'Model name:', 'CPU(s):'):
+                  print(row['field'], row['data'])
+          PYCPU
       - uses: actions/upload-artifact@v7
         with:
           name: LiquidGlass-strip-benchmark-${{ github.sha }}

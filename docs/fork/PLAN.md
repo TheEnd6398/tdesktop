@@ -249,12 +249,11 @@ blur-off keeps the same capsules with opaque fills. Extra lighting, strokes,
 shadows and composer focus glow are removed. Native ripples and flat button
 hover feedback remain.
 
-The next corrections extend real message viewports beneath the header/pinned
-and composer overlays with explicit reading reserves, mask only interactive
-capsules, group header actions, and refresh bounded, expanded blur strips from
-content invalidation. Keep the existing wheel easing model and native input
-classification unchanged while extending its installation coverage. Menu
-shade must cover the complete layer window behind the floating panel.
+Real message viewports now extend beneath the header/pinned and composer
+overlays with explicit reading reserves. Masks cover interactive capsules,
+header actions are grouped, and bounded expanded blur strips refresh from live
+content. The existing vertical wheel easing remains unchanged with wider
+installation coverage. Menu shade covers the complete client layer window.
 
 Header actions share one pill, sized from the currently visible buttons;
 selection and in-header search retain one unified toolbar capsule. Composer
@@ -296,7 +295,8 @@ applied idempotently before `lib_ui` is configured; it is not a gitlink repin.
 Smooth scrolling now has a default toolkit integration hook after each local
 wheel policy. A local handler that consumes an event keeps priority. The same
 220 ms model and native scroll APIs are reused lazily for all remaining
-ScrollArea and vertical ElasticScroll instances; pixel/phase/modifier input
+ScrollArea and ElasticScroll instances, including native horizontal wheels;
+pixel/phase/modifier input
 continues untouched. Horizontal emoji/filter/topic/search tab handlers compose
 the same model explicitly after their native axis checks and stop their own
 programmatic tab animation first. Power Saving's animation flag also cancels

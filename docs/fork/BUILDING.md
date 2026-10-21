@@ -12,28 +12,25 @@ Settings → Advanced → Performance exposes **Liquid Glass interface**. Power
 Saving exposes glass blur and smooth scrolling independently; automatic battery
 saving disables costly effects while retaining the floating layout.
 
-The header and both composers use cached, downsampled samples of the current
-chat wallpaper. They retain reserved reading space, so messages do not extend
-behind those bars. Corner buttons sample the actual message-list widget in
-bounded regions outside paint events. The main menu samples the underlying
-content widget before opening and refreshes its bounded backdrop when that
-content paints. Chat rows, folder buttons, search, settings navigation and
-profile actions share rounded geometry and material highlights. Date badges retain translucent palette
-colors with rounded edge highlights; the recorder uses a rounded opaque
-fallback. The fork does not implement native Windows desktop blur or optical
-refraction. No full-window continuous capture is used.
+Ordinary chat, reply, scheduled and pinned message viewports extend beneath
+floating controls with separate reading reserves. Surfaces sample live wallpaper
+and content before painting, with expanded blur support and a single flat
+palette tint. Power Saving blur-off keeps the capsules opaque. Header actions
+share one pill; attachment/emoji controls share the input surface.
 
-Focused Qt checks exercise blur boundaries, premultiplied alpha, buffer reuse,
-light/dark materials, five DPR values and rendering a small region of a tall
-source widget. A third check covers discrete-wheel classification, fractional
-deltas, easing, accumulation, reversal, range limits and cancellation. Mouse
-wheels use the existing scroll APIs; touchpad, phased, horizontal and modified
-wheel input keeps its native path. Flexible settings pages retain their existing
-wheel policy. These checks do not establish Windows GUI correctness. Test
-normal/narrow windows, light/dark/custom themes, multi-line input, reply/edit,
-recording, pinned navigation, account switches and keyboard/mouse interaction
-with the freshly built client before treating the interface as visually
-verified.
+Toolkit scroll areas use the existing wheel model through a central integration
+hook, preserving local gesture/zoom policy and precision touchpads. The full
+client-area menu shade covers its floating margins. Two recorded `lib_ui`
+patches are applied idempotently at CMake configuration. Git is required in the
+build toolchain; recursive checkout remains mandatory and no gitlink changes
+are needed.
+
+Four Debug Qt checks cover blur, material/capture, wheel policy and reading
+insets/anchors. CI separately measures optimized synthetic strip preparation
+and uploads the JSON and CPU description. This does not establish Windows GUI
+appearance, interaction correctness or real-chat frame times. Follow
+[the implementation inventory and Windows acceptance matrix](IMPLEMENTATION.md)
+on the freshly built client.
 
 ## Required repository configuration
 
