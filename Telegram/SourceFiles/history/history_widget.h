@@ -968,7 +968,6 @@ private:
 	bool _cmdStartShown = false;
 	object_ptr<Ui::InputField> _field;
 	Ui::Glass::Surface _glassComposer;
-	Ui::Animations::Simple _glassFocus;
 	std::unique_ptr<HistoryView::Controls::RichDraftPreview> _richDraftPreview;
 	base::unique_qptr<Ui::RpWidget> _fieldDisabled;
 	std::unique_ptr<Ui::RpWidget> _sendRestriction;

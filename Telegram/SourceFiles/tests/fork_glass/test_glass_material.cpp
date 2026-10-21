@@ -113,7 +113,6 @@ int main(int argc, char **argv) {
 			"Glass button feedback painted outside its circular outline.");
 		for (const auto tint : { QColor(245, 245, 245), QColor(28, 30, 33) }) {
 			auto surface = Ui::Glass::Surface();
-			surface.setShadow(4);
 			const auto source = [](QPainter &p, QRect clip) {
 				p.fillRect(clip, Qt::red);
 			};
@@ -132,7 +131,9 @@ int main(int argc, char **argv) {
 			Check(qAlpha(red.pixel(0, 0)) == 0, "The surface painted a rectangular background.");
 			surface.clear();
 			const auto fallback = Paint(surface, dpr, tint);
-			Check(qAlpha(fallback.pixel(center)) == 255, "Reduced-effects fallback is not opaque.");
+			Check(fallback.pixel(center) == tint.rgba(), "Opaque fallback changed the flat palette tint.");
+			Check(fallback.pixel(QPoint(60 * dpr, 12 * dpr)) == tint.rgba(),
+				"The capsule edge has a gradient or highlight.");
 			Check(surface.checksum() == 0, "Disabled effects retained a backdrop.");
 		}
 	}

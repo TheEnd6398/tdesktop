@@ -11,8 +11,6 @@ namespace Ui::Glass {
 [[nodiscard]] QPoint MapToWidget(QWidget *from, QWidget *to);
 [[nodiscard]] bool CapturingBackdrop();
 void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds);
-void PaintHighlight(QPainter &p, QRect rect, int radius = 0);
-void PaintFocus(QPainter &p, QRect rect, QColor color, qreal opacity, int radius);
 void PaintButtonFeedback(
 	QPainter &p,
 	QRect rect,
@@ -26,7 +24,7 @@ public:
 
 	void prepare(QRect bounds, qreal dpr, const Source &source);
 	void paint(QPainter &p, QRect rect, QColor tint, int radius = 0) const;
-	void setShadow(int shadow);
+	void setTintOpacity(qreal opacity);
 	void clear();
 	[[nodiscard]] quint64 checksum() const;
 
@@ -35,7 +33,7 @@ private:
 	QImage _image;
 	QImage _scratch;
 	QRect _bounds;
-	int _shadow = 0;
+	qreal _tintOpacity = 0.68;
 	quint64 _checksum = 0;
 	quint64 _sourceChecksum = 0;
 	bool _prepared = false;

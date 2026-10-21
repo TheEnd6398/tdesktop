@@ -158,7 +158,7 @@ void PrepareBackdrop(
 		Surface &surface,
 		not_null<QWidget*> target,
 		not_null<QWidget*> source) {
-	surface.setShadow(st::glassShadow);
+	surface.setTintOpacity(st::glassTintOpacity);
 	if (!BlurEnabled()) {
 		surface.clear();
 		return;
@@ -248,16 +248,13 @@ void BindButtonFeedback(not_null<AbstractButton*> button) {
 			}
 			previous = next;
 		};
-		animate(state->hover, state->over, button->isOver(), kHoverDuration);
+		animate(state->hover, state->over, (button->isOver() || button->hasFocus()), kHoverDuration);
 		animate(state->press, state->down, button->isDown(), kPressDuration);
 		auto p = QPainter(button);
 		const auto area = ButtonRect(button->rect());
 		PaintButtonFeedback(p, area, st::windowActiveTextFg->c,
 			state->hover.value(state->over ? 1. : 0.),
 			state->press.value(state->down ? 1. : 0.));
-		if (button->hasFocus()) {
-			PaintFocus(p, area, st::windowActiveTextFg->c, 1., area.height() / 2);
-		}
 	}, button->lifetime());
 }
 
@@ -302,7 +299,7 @@ void PrepareChat(
 		not_null<QWidget*> widget,
 		not_null<Window::SessionController*> controller,
 		QRect bounds) {
-	surface.setShadow(st::glassShadow);
+	surface.setTintOpacity(st::glassTintOpacity);
 	if (!BlurEnabled()) {
 		surface.clear();
 		return;

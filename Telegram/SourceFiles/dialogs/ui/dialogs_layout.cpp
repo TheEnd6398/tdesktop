@@ -498,7 +498,6 @@ void PaintRow(
 			p.setPen(Qt::NoPen);
 			p.setBrush(bg);
 			p.drawRoundedRect(area, st::glassRowRadius, st::glassRowRadius);
-			Ui::Glass::PaintHighlight(p, area, st::glassRowRadius);
 		}
 	} else {
 		p.fillRect(geometry, bg);

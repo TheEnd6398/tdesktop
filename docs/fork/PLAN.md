@@ -147,8 +147,8 @@ selection and animated media paints must participate. Cap each surface to at
 most one refresh per presentation opportunity; hidden/disabled surfaces do
 none. A stale callback must not retain destroyed chat/list owners.
 
-Tint from existing palette colors, apply a restrained saturation adjustment
-and cached optional noise, and add an inner device-aware highlight. Use one
+Tint from existing palette colors with one uniform alpha. No gradients,
+strokes, highlights, noise, extra shadow or optical effects are used. Use one
 coordinated top-edge treatment for stacked floating bars. Avoid glass-on-glass
 captures. The main menu samples below its layer/dimming surfaces; menu child
 backgrounds must not repaint full opaque rectangles over the result.
@@ -241,3 +241,18 @@ cache/runner limits or an unavoidable dependency-fork requirement are human
 prerequisites: stop, preserve commits and report the exact repair. Never
 claim a green build or downloadable artifact without an actual successful
 run, and never advance risky UI work while its compiler path is blocked.
+
+## Iteration 2
+
+The requested material is a floating capsule with live backdrop blur and a
+single flat palette tint. `glassTintOpacity` controls its alpha; Power Saving
+blur-off keeps the same capsules with opaque fills. Extra lighting, strokes,
+shadows and composer focus glow are removed. Native ripples and flat button
+hover feedback remain.
+
+The next corrections extend real message viewports beneath the header/pinned
+and composer overlays with explicit reading reserves, mask only interactive
+capsules, group header actions, and refresh bounded, expanded blur strips from
+content invalidation. Keep the existing wheel easing model and native input
+classification unchanged while extending its installation coverage. Menu
+shade must cover the complete layer window behind the floating panel.

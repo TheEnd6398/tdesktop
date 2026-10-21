@@ -227,7 +227,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace {
 
-constexpr auto kGlassFocusDuration = crl::time(160);
 constexpr auto kMessagesPerPageFirst = 30;
 constexpr auto kMessagesPerPage = 50;
 constexpr auto kPreloadHeightsCount = 3; // when 3 screens to scroll left make a preload request
@@ -488,18 +487,7 @@ HistoryWidget::HistoryWidget(
 	) | rpl::filter(rpl::mappers::_1) | rpl::on_next([=] {
 		fieldFocused();
 	}, _field->lifetime());
-	_field->focusedChanges() | rpl::on_next([=](bool focused) {
-		if (Ui::Glass::Enabled()) {
-			if (anim::Disabled()) {
-				_glassFocus.stop();
-				updateField();
-			} else {
-				_glassFocus.start([=] { updateField(); },
-					_glassFocus.value(focused ? 0. : 1.), focused ? 1. : 0.,
-					kGlassFocusDuration);
-			}
-		}
-	}, lifetime());
+
 	if (session().settings().shouldShowStashHint()) {
 		using StashHintManager = HistoryView::Controls::StashHintManager;
 		_stashHintManager = std::make_unique<StashHintManager>(
@@ -1226,12 +1214,10 @@ HistoryWidget::HistoryWidget(
 	setupComposeStash();
 	setupShortcuts();
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
-		_glassFocus.stop();
 		updateControlsGeometry();
 		update();
 	}, lifetime());
 	PowerSaving::Changes() | rpl::on_next([=] {
-		_glassFocus.stop();
 		updateField();
 	}, lifetime());
 
@@ -11354,9 +11340,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 		}
 		_glassComposer.paint(p, full, st::historyReplyBg->c,
 			st::glassComposerRadius);
-		Ui::Glass::PaintFocus(p, full, st::windowActiveTextFg->c,
-			_glassFocus.value(_field->hasFocus() ? 1. : 0.),
-			st::glassComposerRadius);
+
 		for (const auto button : std::array<Ui::RpWidget*, 2>{
 			_attachToggle.data(), _tabbedSelectorToggle.data() }) {
 			if (!button->isHidden()) {

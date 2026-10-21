@@ -436,7 +436,7 @@ Widget::Widget(
 , _searchTimer([=] { search(); })
 , _peerSearch(&controller->session(), Api::PeerSearch::Type::WithSponsored)
 , _singleMessageSearch(&controller->session()) {
-	_glassNavigation.setShadow(st::glassShadow);
+	_glassNavigation.setTintOpacity(st::glassTintOpacity);
 	Ui::SetupSmoothWheelScroll(_scroll.data());
 	_searchControls->paintRequest() | rpl::on_next([=] {
 		if (!Ui::Glass::Enabled()) {

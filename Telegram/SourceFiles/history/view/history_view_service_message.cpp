@@ -173,7 +173,6 @@ void PaintPreparedDate(
 		p.setPen(Qt::NoPen);
 		p.setBrush(bg);
 		p.drawRoundedRect(area, height / 2., height / 2.);
-		Ui::Glass::PaintHighlight(p, area);
 		p.restore();
 	} else {
 		ServiceMessagePainter::PaintBubble(p, bg, corners, area);

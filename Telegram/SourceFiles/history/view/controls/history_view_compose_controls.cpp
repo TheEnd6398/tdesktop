@@ -146,7 +146,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace HistoryView {
 namespace {
 
-constexpr auto kGlassFocusDuration = crl::time(160);
 constexpr auto kSaveDraftTimeout = crl::time(1000);
 constexpr auto kSaveDraftAnywayTimeout = 5 * crl::time(1000);
 constexpr auto kSaveCloudDraftIdleTimeout = 14 * crl::time(1000);
@@ -1458,26 +1457,13 @@ ComposeControls::ComposeControls(
 		}
 		Ui::Glass::BindButtonFeedback(_tabbedSelectorToggle);
 	}
-	_field->focusedChanges() | rpl::on_next([=](bool focused) {
-		if (Ui::Glass::Enabled()) {
-			if (anim::Disabled()) {
-				_glassFocus.stop();
-				_wrap->update();
-			} else {
-				_glassFocus.start([=] { _wrap->update(); },
-					_glassFocus.value(focused ? 0. : 1.), focused ? 1. : 0.,
-					kGlassFocusDuration);
-			}
-		}
-	}, _wrap->lifetime());
+
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {
-		_glassFocus.stop();
 		updateHeight();
 		updateControlsGeometry(_wrap->size());
 		_wrap->update();
 	}, _wrap->lifetime());
 	PowerSaving::Changes() | rpl::on_next([=] {
-		_glassFocus.stop();
 		_wrap->update();
 	}, _wrap->lifetime());
 }
@@ -5769,9 +5755,7 @@ void ComposeControls::paintBackground(QPainter &p, QRect full, QRect clip) {
 		}
 		_glass.paint(p, area,
 			_st.bg->c, st::glassComposerRadius);
-		Ui::Glass::PaintFocus(p, area, st::windowActiveTextFg->c,
-			_glassFocus.value(_field->hasFocus() ? 1. : 0.),
-			st::glassComposerRadius);
+
 		for (const auto button : std::array<Ui::RpWidget*, 2>{
 			_attachToggle, _tabbedSelectorToggle }) {
 			if (button && !button->isHidden()) {

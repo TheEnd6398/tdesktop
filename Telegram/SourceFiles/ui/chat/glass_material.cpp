@@ -90,61 +90,23 @@ void Surface::paint(QPainter &p, QRect rect, QColor tint, int radius) const {
 	const auto rounded = QRectF(rect);
 	const auto r = radius ? radius : rect.height() / 2.;
 	p.setPen(Qt::NoPen);
-	for (auto i = _shadow; i > 0; --i) {
-		p.setBrush(QColor(0, 0, 0, 3));
-		p.drawRoundedRect(rounded.adjusted(-i, 0, i, i), r + i, r + i);
-	}
+
 	auto path = QPainterPath();
 	path.addRoundedRect(rounded, r, r);
 	p.setClipPath(path, Qt::IntersectClip);
 	if (!_image.isNull()) {
 		p.setRenderHint(QPainter::SmoothPixmapTransform);
 		p.drawImage(_bounds, _image);
-		tint.setAlpha(190);
+		tint.setAlphaF(_tintOpacity);
 	} else {
 		tint.setAlpha(255);
 	}
 	p.fillPath(path, tint);
-	PaintHighlight(p, rect, radius);
 	p.restore();
 }
 
-void PaintHighlight(QPainter &p, QRect rect, int radius) {
-	p.save();
-	p.setRenderHint(QPainter::Antialiasing);
-	const auto rounded = QRectF(rect);
-	const auto r = radius ? radius : rect.height() / 2.;
-	auto path = QPainterPath();
-	path.addRoundedRect(rounded, r, r);
-	p.setClipPath(path, Qt::IntersectClip);
-	auto light = QLinearGradient(rounded.topLeft(), rounded.bottomLeft());
-	light.setColorAt(0., QColor(255, 255, 255, 32));
-	light.setColorAt(0.45, QColor(255, 255, 255, 4));
-	light.setColorAt(1., QColor(0, 0, 0, 10));
-	p.fillPath(path, light);
-	const auto inset = 0.5 / p.device()->devicePixelRatioF();
-	p.setBrush(Qt::NoBrush);
-	p.setPen(QPen(QColor(255, 255, 255, 58), 2 * inset));
-	p.drawRoundedRect(rounded.adjusted(inset, inset, -inset, -inset), r, r);
-	p.restore();
-}
-
-void PaintFocus(QPainter &p, QRect rect, QColor color, qreal opacity, int radius) {
-	if (opacity <= 0.) {
-		return;
-	}
-	p.save();
-	p.setRenderHint(QPainter::Antialiasing);
-	const auto line = 1. / p.device()->devicePixelRatioF();
-	color.setAlphaF(std::clamp(opacity * 0.35, 0., 1.));
-	p.setPen(QPen(color, line));
-	p.setBrush(Qt::NoBrush);
-	p.drawRoundedRect(QRectF(rect).adjusted(line, line, -line, -line), radius, radius);
-	p.restore();
-}
-
-void Surface::setShadow(int shadow) {
-	_shadow = shadow;
+void Surface::setTintOpacity(qreal opacity) {
+	_tintOpacity = std::clamp(opacity, 0., 1.);
 }
 
 void PaintButtonFeedback(
@@ -164,11 +126,6 @@ void PaintButtonFeedback(
 	p.setClipPath(path, Qt::IntersectClip);
 	color.setAlphaF(std::clamp(0.08 * hover + 0.12 * pressed, 0., 1.));
 	p.fillPath(path, color);
-	auto light = QLinearGradient(rect.topLeft(), rect.bottomRight());
-	light.setColorAt(0., QColor(255, 255, 255,
-		int(std::clamp(hover * 28. + pressed * 20., 0., 255.))));
-	light.setColorAt(1., Qt::transparent);
-	p.fillPath(path, light);
 	p.restore();
 }
 

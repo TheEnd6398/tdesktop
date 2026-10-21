@@ -558,7 +558,6 @@ private:
 
 	const std::unique_ptr<Ui::RpWidget> _wrap;
 	Ui::Glass::Surface _glass;
-	Ui::Animations::Simple _glassFocus;
 	std::unique_ptr<Ui::RpWidget> _writeRestricted;
 	rpl::event_stream<FullReplyTo> _jumpToItemRequests;
 
