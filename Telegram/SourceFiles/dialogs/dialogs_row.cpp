@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_row.h"
+#include "ui/effects/motion.h"
 
 #include "ui/chat/chat_theme.h" // CountAverageColor.
 #include "ui/color_contrast.h"
@@ -38,6 +39,45 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_dialogs.h"
 
 namespace Dialogs {
+
+struct BasicRow::MotionState {
+	MotionState(QWidget *owner, Fn<void()> repaint)
+	: widget(owner), hover(owner, 0., repaint), active(owner, 0., std::move(repaint)) {
+	}
+	QPointer<QWidget> widget;
+	Ui::Motion::Value hover;
+	Ui::Motion::Value active;
+};
+
+std::pair<double, double> BasicRow::motionState(
+		QWidget *owner,
+		Fn<void()> repaint,
+		bool hover,
+		bool active,
+		bool animate) const {
+	if (!Ui::Motion::Enabled() || !owner || !animate) {
+		_motion.reset();
+		return { hover ? 1. : 0., active ? 1. : 0. };
+	}
+	if (!_motion || _motion->widget != owner) {
+		if (!hover && !active) {
+			return { 0., 0. };
+		}
+		_motion = std::make_unique<MotionState>(owner, std::move(repaint));
+	}
+	_motion->hover.to(hover ? 1. : 0., Ui::Motion::Role::Hover);
+	_motion->active.to(active ? 1. : 0.);
+	const auto result = std::pair(std::clamp(_motion->hover.value(), 0., 1.),
+		std::clamp(_motion->active.value(), 0., 1.));
+	if (!hover && !active && !motionAnimating()) {
+		_motion.reset();
+	}
+	return result;
+}
+
+bool BasicRow::motionAnimating() const {
+	return _motion && (_motion->hover.animating() || _motion->active.animating());
+}
 namespace {
 
 constexpr auto kTopLayer = 3;

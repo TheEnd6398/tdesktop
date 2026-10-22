@@ -198,7 +198,7 @@ bool ManageAppLink(
 	const auto lnk = QString::fromWCharArray(startupFolder)
 		+ '\\'
 #if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-		+ u"Liquid Glass"_q
+		+ u"Aurora Glass"_q
 #else
 		+ AppFile.utf16()
 #endif
@@ -254,7 +254,7 @@ QString psAppDataPath() {
 #ifdef OS_WIN_STORE
 		return appData.absolutePath() + u"/Telegram Desktop UWP/"_q;
 #elif defined TDESKTOP_FORK_LIQUID_GLASS
-		return appData.absolutePath() + u"/Liquid Glass/"_q;
+		return appData.absolutePath() + u"/Aurora Glass/"_q;
 #else // OS_WIN_STORE
 		return appData.absolutePath() + '/' + AppName.utf16() + '/';
 #endif // OS_WIN_STORE

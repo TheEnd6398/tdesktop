@@ -518,7 +518,7 @@ emojiPanDuration: 200;
 emojiPanHover: windowBgOver;
 emojiPanSlideDuration: 200;
 emojiPanArea: size(34px, 32px);
-emojiPanRadius: 8px;
+emojiPanRadius: 14px;
 emojiPanReactionsPreviewPadding: margins(10px, 20px, 10px, 20px);
 emojiPanEmojiPreviewMinHeight: 160px;
 emojiPanEmojiPreviewRadius: 8px + 8px + 4px;

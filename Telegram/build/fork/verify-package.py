@@ -24,9 +24,9 @@ args = parser.parse_args()
 with zipfile.ZipFile(args.archive) as package:
     assert package.testzip() is None, 'Archive CRC validation failed.'
     members = {item.filename.replace('\\', '/'): item for item in package.infolist()}
-    root = 'LiquidGlass/'
-    required = {'Telegram.exe', 'Start Liquid Glass.cmd', 'LICENSE', 'LEGAL',
-                'README.md', 'IMPLEMENTATION.md', 'BUILD-INFO.json', 'imports.txt',
+    root = 'AuroraGlass/'
+    required = {'Telegram.exe', 'Start Aurora Glass.cmd', 'LICENSE', 'LEGAL',
+                'README.md', 'IMPLEMENTATION.md', 'MOTION.md', 'BUILD-INFO.json', 'imports.txt',
                 'modules/x64/d3d/d3dcompiler_47.dll'}
     missing = sorted(root + name for name in required if root + name not in members)
     assert not missing, f'Missing package files: {missing}; archive entries: {sorted(members)}'
@@ -44,9 +44,9 @@ with zipfile.ZipFile(args.archive) as package:
     assert provenance['executable_sha256'] == executable_hash, 'The executable does not match its build provenance.'
     main_info = pe_info(executable)
     assert main_info['subsystem'] == 2, 'The client is not a Windows GUI executable.'
-    brand_count = executable.count('Liquid Glass for Telegram\0'.encode('utf-16le'))
+    brand_count = executable.count('Aurora Glass for Telegram\0'.encode('utf-16le'))
     assert brand_count >= 2, 'Fork product/description resources are not active.'
-    launcher = package.read(members[root + 'Start Liquid Glass.cmd']).decode('ascii')
+    launcher = package.read(members[root + 'Start Aurora Glass.cmd']).decode('ascii')
     assert '-workdir "%~dp0profile"' in launcher, 'The launcher does not isolate its profile.'
     assert '"%~dp0Telegram.exe"' in launcher, 'The launcher does not use its own executable.'
     dlls = {}

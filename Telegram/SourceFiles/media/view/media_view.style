@@ -91,7 +91,7 @@ mediaviewFullScreenOutIcon: icon {{ "player/player_minimize", mediaviewPlaybackI
 mediaviewFullScreenOutIconOver: icon {{ "player/player_minimize", mediaviewPlaybackIconFgOver }};
 
 mediaviewVolumeWidth: 75px;
-mediaviewControllerRadius: 9px;
+mediaviewControllerRadius: 16px;
 
 mediaviewVolumeIcon0: icon {{ "player/player_volume_off", mediaviewPlaybackIconFg }};
 mediaviewVolumeIcon0Over: icon {{ "player/player_volume_off", mediaviewPlaybackIconFgOver }};

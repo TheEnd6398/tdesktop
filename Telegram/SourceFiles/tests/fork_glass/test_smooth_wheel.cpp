@@ -78,6 +78,13 @@ int main(int argc, char **argv) {
 	position = *motion.advance(40);
 	motion.scrollBy(60., position, 1000, 40);
 	Check(motion.target() == 220, "Repeated wheel input did not accumulate.");
+	auto previous = position;
+	for (auto now = 41; now < 80; ++now) {
+		const auto next = motion.advance(now);
+		Check(next && *next >= previous && *next <= 220,
+			"Interrupted wheel interpolation overshot or reversed.");
+		previous = *next;
+	}
 	position = *motion.advance(80);
 	motion.scrollBy(-20., position, 1000, 80);
 	Check(motion.target() == position - 20, "Direction reversal retained the old target.");

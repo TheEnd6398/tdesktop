@@ -5,6 +5,8 @@
 #include <QtCore/QHashFunctions>
 #include <QtCore/QScopedValueRollback>
 #include <QtGui/QPainterPath>
+#include <QtGui/QLinearGradient>
+#include <QtGui/QRadialGradient>
 #include <QtWidgets/QWidget>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +18,73 @@ namespace {
 auto RenderDepth = 0;
 
 } // namespace
+
+void PaintMaterial(
+		QPainter &p,
+		QRectF rect,
+		QColor tint,
+		QColor accent,
+		qreal radius,
+		qreal edge,
+		Material material,
+		qreal opacity) {
+	if (rect.isEmpty() || opacity <= 0. || !tint.alpha()) {
+		return;
+	}
+	const auto dark = tint.lightnessF() < 0.5;
+	const auto content = material == Material::Content;
+	const auto crystal = material == Material::Crystal;
+	const auto smoked = material == Material::Smoked;
+	const auto soft = material == Material::Soft;
+	radius = std::clamp(radius, 0., std::min(rect.width(), rect.height()) / 2.);
+	p.save();
+	p.setRenderHint(QPainter::Antialiasing);
+	auto path = QPainterPath();
+	path.addRoundedRect(rect, radius, radius);
+	p.setClipPath(path, Qt::IntersectClip);
+	tint.setAlphaF(tint.alphaF() * std::clamp(opacity, 0., 1.));
+	p.fillPath(path, tint);
+	if (content) {
+		p.restore();
+		return;
+	}
+	const auto light = QColor(dark ? Qt::white : Qt::black);
+	auto top = light;
+	auto bottom = light;
+	top.setAlphaF(smoked ? 0.045 : soft ? 0.025 : 0.065);
+	bottom.setAlphaF(dark ? 0.005 : 0.015);
+	auto reflection = QLinearGradient(rect.topLeft(), rect.bottomLeft());
+	reflection.setColorAt(0., top);
+	reflection.setColorAt(0.52, QColor(0, 0, 0, 0));
+	reflection.setColorAt(1., bottom);
+	p.fillPath(path, reflection);
+	if (accent.isValid()) {
+		const auto origin = rect.topLeft()
+			+ QPointF(rect.width() * 0.18, -rect.height() * 0.25);
+		auto diffusion = QRadialGradient(origin, rect.width() * 0.85);
+		accent.setAlphaF(smoked ? 0.085 : crystal ? 0.09 : 0.045);
+		diffusion.setColorAt(0., accent);
+		accent.setAlpha(0);
+		diffusion.setColorAt(1., accent);
+		p.fillPath(path, diffusion);
+	}
+	if (radius > 0. && edge > 0.) {
+		auto rim = QLinearGradient(rect.topLeft(), rect.bottomLeft());
+		auto highlight = light;
+		highlight.setAlphaF(dark ? 0.19 : 0.10);
+		rim.setColorAt(0., highlight);
+		highlight.setAlphaF(dark ? 0.055 : 0.04);
+		rim.setColorAt(0.5, highlight);
+		highlight.setAlphaF(dark ? 0.10 : 0.07);
+		rim.setColorAt(1., highlight);
+		p.setPen(QPen(QBrush(rim), edge));
+		p.setBrush(Qt::NoBrush);
+		p.drawRoundedRect(rect.adjusted(edge / 2., edge / 2., -edge / 2., -edge / 2.),
+			std::max(0., radius - edge / 2.),
+			std::max(0., radius - edge / 2.));
+	}
+	p.restore();
+}
 
 bool CapturingBackdrop() {
 	return RenderDepth > 0;
@@ -106,12 +175,18 @@ void Surface::paint(QPainter &p, QRect rect, QColor tint, int radius) const {
 	if (!_image.isNull()) {
 		p.setRenderHint(QPainter::SmoothPixmapTransform);
 		p.drawImage(_bounds, _image);
-		tint.setAlphaF(_tintOpacity);
 	} else {
 		tint.setAlpha(255);
 	}
-	p.fillPath(path, tint);
+	PaintMaterial(p, rounded, tint, _accent, r, _edge, _material,
+		_image.isNull() ? 1. : _tintOpacity);
 	p.restore();
+}
+
+void Surface::setMaterial(Material material, QColor accent, qreal edge) {
+	_material = material;
+	_accent = accent;
+	_edge = edge;
 }
 
 void Surface::setBlurRadius(int radius) {

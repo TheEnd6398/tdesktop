@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/widgets/discrete_sliders.h"
+#include "ui/effects/motion.h"
 
 #include "ui/effects/ripple_animation.h"
 #include "styles/style_widgets.h"
@@ -241,10 +242,10 @@ void DiscreteSlider::setSelectedSection(int index) {
 		const auto from = getFinalActiveRange();
 		_selected = index;
 		const auto to = getFinalActiveRange();
-		const auto duration = getAnimationDuration();
+		const auto duration = Motion::Duration(Motion::Role::State, getAnimationDuration());
 		const auto updater = [this] { update(); };
-		_a_left.start(updater, from.left, to.left, duration);
-		_a_width.start(updater, from.width, to.width, duration);
+		_a_left.start(updater, from.left, to.left, duration, Motion::Curve(Motion::Role::State));
+		_a_width.start(updater, from.width, to.width, duration, Motion::Curve(Motion::Role::State));
 		_callbackAfterMs = crl::now() + duration;
 	}
 }

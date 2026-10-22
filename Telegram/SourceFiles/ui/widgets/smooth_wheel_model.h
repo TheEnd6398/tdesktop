@@ -25,6 +25,8 @@ private:
 	int _from = 0;
 	int _target = 0;
 	int _direction = 0;
+	double _slope = 3.;
+	double _velocity = 0.;
 	double _remainder = 0.;
 	bool _active = false;
 

@@ -1,6 +1,7 @@
 #include "ui/widgets/glass_navigation_button.h"
 
 #include "ui/chat/glass_surface.h"
+#include "ui/power_saving.h"
 #include "ui/painter.h"
 #include "styles/style_fork_glass.h"
 
@@ -18,7 +19,7 @@ void NavigationButton::paintEvent(QPaintEvent *event) {
 		Ui::SettingsButton::paintEvent(event);
 		return;
 	}
-	if (anim::Disabled()) {
+	if (anim::Disabled() || PowerSaving::On(PowerSaving::kAnimations)) {
 		_hover.stop();
 	}
 	auto p = Painter(this);
@@ -29,8 +30,10 @@ void NavigationButton::paintEvent(QPaintEvent *event) {
 	path.addRoundedRect(area, st::glassRowRadius, st::glassRowRadius);
 	p.setRenderHint(QPainter::Antialiasing);
 	p.setClipPath(path);
-	p.fillRect(area, anim::brush(st().textBg, st().textBgOver,
-		_hover.value(over ? 1. : 0.)));
+	const auto tint = anim::color(st().textBg, st().textBgOver,
+		_hover.value(over ? 1. : 0.));
+	PaintPanel(p, area, tint, Material::Soft, st::glassRowRadius);
+	paintMotion(p, area, st::glassRowRadius);
 	paintRipple(p, 0, 0);
 	paintText(p, over, width());
 	paintToggle(p, width());
@@ -38,7 +41,8 @@ void NavigationButton::paintEvent(QPaintEvent *event) {
 
 void NavigationButton::onStateChanged(State was, StateChangeSource source) {
 	Ui::SettingsButton::onStateChanged(was, source);
-	if (!Enabled() || anim::Disabled()) {
+	if (!Enabled() || anim::Disabled()
+		|| PowerSaving::On(PowerSaving::kAnimations)) {
 		_hover.stop();
 		return;
 	}
@@ -49,7 +53,8 @@ void NavigationButton::onStateChanged(State was, StateChangeSource source) {
 		return;
 	}
 	_hover.start([=] { update(); }, _hover.value(over ? 0. : 1.),
-		over ? 1. : 0., kHoverDuration);
+		over ? 1. : 0., Motion::Duration(Motion::Role::Hover, kHoverDuration),
+		Motion::Curve(Motion::Role::Hover));
 }
 
 } // namespace Ui::Glass

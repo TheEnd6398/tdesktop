@@ -9,6 +9,13 @@ add_executable(test_glass_blur
 target_include_directories(test_glass_blur PRIVATE ../..)
 target_link_libraries(test_glass_blur PRIVATE Qt6::Gui)
 enable_testing()
+add_executable(test_motion_model test_motion_model.cpp)
+target_include_directories(test_motion_model PRIVATE ../../../lib_ui)
+add_test(NAME motion_model COMMAND test_motion_model)
+add_executable(test_motion_paint test_motion_paint.cpp ../../../lib_ui/ui/effects/motion_paint.cpp)
+target_include_directories(test_motion_paint PRIVATE ../../../lib_ui)
+target_link_libraries(test_motion_paint PRIVATE Qt6::Gui)
+add_test(NAME motion_paint COMMAND test_motion_paint)
 add_test(NAME glass_blur COMMAND test_glass_blur)
 add_executable(test_glass_material
     test_glass_material.cpp
@@ -18,6 +25,14 @@ add_executable(test_glass_material
 target_include_directories(test_glass_material PRIVATE ../..)
 target_link_libraries(test_glass_material PRIVATE Qt6::Gui Qt6::Widgets)
 add_test(NAME glass_material COMMAND test_glass_material)
+add_executable(test_aurora_material
+    test_aurora_material.cpp
+    ../../ui/chat/glass_material.cpp
+    ../../ui/chat/glass_blur.cpp
+)
+target_include_directories(test_aurora_material PRIVATE ../..)
+target_link_libraries(test_aurora_material PRIVATE Qt6::Gui Qt6::Widgets)
+add_test(NAME aurora_material COMMAND test_aurora_material)
 add_executable(test_smooth_wheel
     test_smooth_wheel.cpp
     ../../ui/widgets/smooth_wheel_model.cpp

@@ -2127,6 +2127,8 @@ PRIVATE
     ui/chat/choose_send_as.cpp
     ui/chat/choose_send_as.h
     ui/chat/glass_surface.cpp
+    ui/aurora_motion.cpp
+    ui/aurora_motion.h
     ui/chat/glass_surface.h
     ui/chat/choose_theme_controller.cpp
     ui/chat/choose_theme_controller.h

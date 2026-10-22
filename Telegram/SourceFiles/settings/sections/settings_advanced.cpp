@@ -45,6 +45,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_experimental.h"
 #include "settings/settings_power_saving.h"
 #include "ui/chat/glass_surface.h"
+#include "ui/aurora_motion.h"
 #include "settings/sections/settings_privacy_security.h"
 #include "storage/localstorage.h"
 #include "storage/storage_domain.h"
@@ -929,6 +930,17 @@ void BuildPerformanceSection(SectionBuilder &builder) {
 		glass->checkedChanges() | rpl::on_next([](bool enabled) {
 			Ui::Glass::SetEnabled(enabled);
 		}, glass->lifetime());
+	}
+	const auto reducedMotion = builder.addCheckbox({
+		.id = u"advanced/aurora_reduced_motion"_q,
+		.title = tr::lng_settings_aurora_reduced_motion(),
+		.checked = Ui::AuroraMotion::Reduced(),
+		.keywords = { u"motion"_q, u"animation"_q, u"accessibility"_q },
+	});
+	if (reducedMotion) {
+		reducedMotion->checkedChanges() | rpl::on_next([](bool reduced) {
+			Ui::AuroraMotion::SetReduced(reduced);
+		}, reducedMotion->lifetime());
 	}
 #endif
 

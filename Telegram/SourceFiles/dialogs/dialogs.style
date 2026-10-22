@@ -76,8 +76,8 @@ infoForumTopicIcon: ForumTopicIcon {
 }
 
 dialogsUnreadFont: font(12px bold);
-dialogsUnreadHeight: 19px;
-dialogsUnreadPadding: 5px;
+dialogsUnreadHeight: 20px;
+dialogsUnreadPadding: 6px;
 
 dialogsRipple: RippleAnimation(defaultRippleAnimation) {
 	color: dialogsRippleBg;
@@ -88,69 +88,69 @@ dialogsTextStyle: defaultTextStyle;
 dialogsDateFont: font(13px);
 dialogsDateSkip: 5px;
 
-dialogsRowHeight: 62px;
-dialogsFilterPadding: point(7px, 7px);
+dialogsRowHeight: 72px;
+dialogsFilterPadding: point(12px, 12px);
 dialogsFilterSkip: 4px;
 
 defaultDialogRow: DialogRow {
 	height: dialogsRowHeight;
-	padding: margins(10px, 8px, 10px, 8px);
-	photoSize: 46px;
-	nameLeft: 68px;
-	nameTop: 10px;
-	textLeft: 68px;
-	textTop: 34px;
+	padding: margins(16px, 12px, 16px, 12px);
+	photoSize: 48px;
+	nameLeft: 78px;
+	nameTop: 12px;
+	textLeft: 78px;
+	textTop: 38px;
 }
 communityRequestableListItem: PeerListItem(defaultPeerListItem) {
-	height: dialogsRowHeight;            // == st::defaultDialogRow.height (62px)
-	photoSize: 46px;                     // == st::defaultDialogRow.photoSize
-	photoPosition: point(10px, 8px);     // == st::defaultDialogRow.padding left/top (10,8)
-	namePosition: point(68px, 10px);     // == st::defaultDialogRow.nameLeft / nameTop
-	statusPosition: point(68px, 34px);   // == st::defaultDialogRow.textLeft / textTop
+	height: dialogsRowHeight;
+	photoSize: 48px;
+	photoPosition: point(16px, 12px);
+	namePosition: point(78px, 12px);
+	statusPosition: point(78px, 38px);
 }
 communityRequestableList: PeerList(defaultPeerList) {
 	item: communityRequestableListItem;
 }
 taggedDialogRow: DialogRow(defaultDialogRow) {
-	height: 72px;
-	textTop: 30px;
-	tagTop: 52px;
+	height: 82px;
+	textTop: 36px;
+	tagTop: 60px;
 }
 forumDialogRow: DialogRow(defaultDialogRow) {
-	height: 80px;
-	textTop: 32px;
+	height: 90px;
+	textTop: 38px;
 	topicsSkip: 8px;
 	topicsSkipBig: 14px;
 	topicsHeight: 21px;
 }
 taggedForumDialogRow: DialogRow(forumDialogRow) {
-	height: 96px;
-	tagTop: 77px;
+	height: 104px;
+	tagTop: 83px;
 }
 communityInfoDialogRow: DialogRow(defaultDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoTaggedDialogRow: DialogRow(taggedDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoForumDialogRow: DialogRow(forumDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoTaggedForumDialogRow: DialogRow(taggedForumDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoRequestableListItem: PeerListItem(communityRequestableListItem) {
-	photoPosition: point(22px, 8px);     // == st::communityInfoDialogRow.padding left/top (22,8)
-	namePosition: point(80px, 10px);     // == st::communityInfoDialogRow.nameLeft / nameTop
-	statusPosition: point(80px, 34px);   // == st::communityInfoDialogRow.textLeft / textTop
+	photoPosition: point(22px, 12px);
+	namePosition: point(80px, 12px);     // == st::communityInfoDialogRow.nameLeft / nameTop
+	statusPosition: point(80px, 38px);   // == st::communityInfoDialogRow.textLeft / textTop
 }
 communityInfoRequestableList: PeerList(defaultPeerList) {
 	item: communityInfoRequestableListItem;
@@ -164,10 +164,10 @@ dialogRowOpenBot: DialogRightButton {
 		height: 20px;
 		textTop: 1px;
 	}
-	margin: margins(0px, 32px, 10px, 0px);
+	margin: margins(0px, 36px, 10px, 0px);
 }
 dialogRowOpenBotRecent: DialogRightButton(dialogRowOpenBot) {
-	margin: margins(0px, 32px, 16px, 0px);
+	margin: margins(0px, 36px, 16px, 0px);
 }
 dialogsTopBarRightButton: RoundButton(defaultActiveButton) {
 	width: -16px;
@@ -311,7 +311,7 @@ dialogsSearchFrom: IconButton(dialogsCalendar) {
 dialogsFilter: InputField(defaultInputField) {
 	textBg: filterInputInactiveBg;
 	textBgActive: filterInputActiveBg;
-	textMargins: margins(12px, 8px, 30px, 5px);
+	textMargins: margins(14px, 10px, 30px, 8px);
 
 	placeholderFg: placeholderFg;
 	placeholderFgActive: placeholderFgActive;
@@ -327,12 +327,12 @@ dialogsFilter: InputField(defaultInputField) {
 
 	border: 3px;
 	borderActive: 2px;
-	borderRadius: 18px;
+	borderRadius: 12px;
 	borderDenominator: 2;
 
 	style: defaultTextStyle;
 
-	heightMin: 35px;
+	heightMin: 40px;
 }
 dialogsCancelSearchInPeer: IconButton(dialogsMenuToggle) {
 	icon: icon {{ "dialogs/dialogs_cancel_search", dialogsMenuIconFg }};

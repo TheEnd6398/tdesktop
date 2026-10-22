@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/controls/call_button.h"
+#include "ui/chat/glass_surface.h"
 
 #include "ui/effects/ripple_animation.h"
 #include "ui/painter.h"
@@ -158,6 +159,10 @@ void CallButton::setProgress(float64 progress) {
 
 void CallButton::paintEvent(QPaintEvent *e) {
 	QPainter p(this);
+	const auto compression = 1. - 0.04 * motionPress();
+	p.translate(rect().center());
+	p.scale(compression, compression);
+	p.translate(-rect().center());
 
 	auto bgPosition = myrtlpoint(_stFrom->bgPosition);
 	auto paintFrom = (_progress == 0.) || !_stTo;
@@ -182,7 +187,18 @@ void CallButton::paintEvent(QPaintEvent *e) {
 		p.drawEllipse(outerRect);
 	}
 
-	if (_bgOverride) {
+	if (Ui::Glass::Enabled() && !_corner) {
+		const auto side = _stFrom->bgSize;
+		const auto tint = _bgOverride
+			? *_bgOverride
+			: paintFrom
+			? _stFrom->bg->c
+			: paintTo
+			? _stTo->bg->c
+			: anim::color(_stFrom->bg, _stTo->bg, _progress);
+		Ui::Glass::PaintPanel(p, QRect(bgPosition, QSize(side, side)),
+			tint, Ui::Glass::Material::Crystal, side / 2);
+	} else if (_bgOverride) {
 		Assert(!_corner); // Didn't support this case yet.
 
 		const auto &s = _stFrom->bgSize;
@@ -200,6 +216,8 @@ void CallButton::paintEvent(QPaintEvent *e) {
 		p.drawImage(bgPosition, _bg);
 	}
 
+	paintMotion(p, QRect(bgPosition, QSize(_stFrom->bgSize, _stFrom->bgSize)),
+		_stFrom->bgSize / 2.);
 	auto rippleColorInterpolated = QColor();
 	auto rippleColorOverride = &rippleColorInterpolated;
 	if (_rippleOverride) {

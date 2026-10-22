@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "media/view/media_view_playback_controls.h"
+#include "ui/chat/glass_surface.h"
 
 #include "media/audio/media_audio.h"
 #include "media/player/media_player_button.h"
@@ -529,7 +530,13 @@ void PlaybackControls::paintEvent(QPaintEvent *e) {
 		_volumeController->setFadeOpacity(1.);
 		_childrenHidden = false;
 	}
-	Ui::FillRoundRect(p, rect(), st::mediaviewSaveMsgBg, Ui::MediaviewSaveCorners);
+	if (Ui::Glass::Enabled()) {
+		Ui::Glass::PaintPanel(p, rect(), st::mediaviewSaveMsgBg->c,
+			Ui::Glass::Material::Smoked, st::mediaviewControllerRadius);
+	} else {
+		Ui::FillRoundRect(p, rect(), st::mediaviewSaveMsgBg,
+			Ui::MediaviewSaveCorners);
+	}
 }
 
 void PlaybackControls::mousePressEvent(QMouseEvent *e) {

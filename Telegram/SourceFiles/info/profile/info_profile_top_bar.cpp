@@ -2898,6 +2898,13 @@ void TopBar::paintEvent(QPaintEvent *e) {
 	}
 	if (!_hasGradientBg) {
 		paintEdges(p, clipBounds);
+		if (Ui::Glass::Enabled()) {
+			p.save();
+			p.setClipRect(clipBounds, Qt::IntersectClip);
+			Ui::Glass::PaintPanel(p, rect(), st::windowBg->c,
+				Ui::Glass::Material::Frosted, st::boxRadius);
+			p.restore();
+		}
 	} else {
 		const auto x = (width()
 			- _cachedGradient.width() / style::DevicePixelRatio())

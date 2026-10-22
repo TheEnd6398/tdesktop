@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "media/player/media_player_widget.h"
+#include "ui/chat/glass_surface.h"
 
 #include "platform/platform_specific.h"
 #include "data/data_document.h"
@@ -456,7 +457,13 @@ void Widget::paintEvent(QPaintEvent *e) {
 	auto fill = e->rect().intersected(
 		QRect(0, 0, width(), st::mediaPlayerHeight + st::lineWidth));
 	if (!fill.isEmpty()) {
-		p.fillRect(fill, st::mediaPlayerBg);
+		if (Ui::Glass::Enabled()) {
+			p.setClipRect(fill);
+			Ui::Glass::PaintPanel(p, rect(), st::mediaPlayerBg->c,
+				Ui::Glass::Material::Frosted);
+		} else {
+			p.fillRect(fill, st::mediaPlayerBg);
+		}
 	}
 }
 

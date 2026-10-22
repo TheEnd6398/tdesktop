@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "storage/localstorage.h"
+#include "ui/chat/glass_surface.h"
 
 #include "storage/serialize_common.h"
 #include "storage/storage_account.h"
@@ -1227,13 +1228,17 @@ void InitialLoadTheme() {
 }
 
 bool ApplyDefaultNightMode() {
-	const auto NightByDefault = Platform::IsMacStoreBuild();
+	const auto NightByDefault = Platform::IsMacStoreBuild()
+		|| Ui::Glass::Enabled();
 	if (!NightByDefault
 		|| Window::Theme::IsNightMode()
 		|| _themeKeyDay
 		|| _themeKeyNight
 		|| _themeKeyLegacy) {
 		return false;
+	}
+	if (Ui::Glass::Enabled()) {
+		Core::App().settings().setSystemDarkModeEnabled(false);
 	}
 	Core::App().startSettingsAndBackground();
 	Window::Theme::ToggleNightMode();

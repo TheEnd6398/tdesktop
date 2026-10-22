@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "intro/intro_widget.h"
+#include "ui/chat/glass_surface.h"
 
 #include "intro/intro_start.h"
 #include "intro/intro_phone.h"
@@ -811,7 +812,12 @@ void Widget::paintEvent(QPaintEvent *e) {
 		_showAnimation->paintContents(p);
 		return;
 	}
-	p.fillRect(e->rect(), st::windowBg);
+	if (Ui::Glass::Enabled()) {
+		Ui::Glass::PaintPanel(p, rect(), st::windowBg->c,
+			Ui::Glass::Material::Smoked);
+	} else {
+		p.fillRect(e->rect(), st::windowBg);
+	}
 }
 
 void Widget::resizeEvent(QResizeEvent *e) {

@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_list_widget.h"
+#include "ui/effects/motion.h"
 
 #include "ui/chat/glass_material.h"
 
@@ -2717,8 +2718,9 @@ void ListWidget::startItemRevealAnimations() {
 					[=] { revealItemsCallback(); },
 					0.,
 					1.,
-					st::itemRevealDuration,
-					anim::easeOutQuint);
+					Ui::Motion::CurrentMode() == Ui::Motion::Mode::Reduced ? 0
+						: Ui::Motion::Duration(Ui::Motion::Role::Message, st::itemRevealDuration),
+					Ui::Motion::Curve(Ui::Motion::Role::Message, anim::easeOutQuint));
 				if (view->data()->out()) {
 					_delegate->listChatTheme()->rotateComplexGradientBackground();
 				}

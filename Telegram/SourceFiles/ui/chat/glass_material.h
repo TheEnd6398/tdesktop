@@ -8,6 +8,24 @@ class QWidget;
 
 namespace Ui::Glass {
 
+enum class Material {
+	Crystal,
+	Frosted,
+	Smoked,
+	Soft,
+	Content,
+};
+
+void PaintMaterial(
+	QPainter &p,
+	QRectF rect,
+	QColor tint,
+	QColor accent,
+	qreal radius,
+	qreal edge,
+	Material material,
+	qreal opacity = 1.);
+
 [[nodiscard]] QPoint MapToWidget(QWidget *from, QWidget *to);
 [[nodiscard]] bool CapturingBackdrop();
 void RenderRegion(QPainter &p, QWidget *source, QPoint offset, QRect bounds, bool children = true);
@@ -26,6 +44,7 @@ public:
 	void paint(QPainter &p, QRect rect, QColor tint, int radius = 0) const;
 	void setTintOpacity(qreal opacity);
 	void setBlurRadius(int radius);
+	void setMaterial(Material material, QColor accent, qreal edge);
 	void clear();
 	[[nodiscard]] quint64 checksum() const;
 
@@ -40,6 +59,9 @@ private:
 	quint64 _sourceChecksum = 0;
 	bool _prepared = false;
 	int _radius = 0;
+	Material _material = Material::Content;
+	QColor _accent;
+	qreal _edge = 0.;
 
 };
 
