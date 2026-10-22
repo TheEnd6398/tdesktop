@@ -1169,7 +1169,7 @@ index 433b8f3..08ec450 100644
  	_roundRect.paint(p, rect());
  }
 diff --git a/ui/widgets/buttons.cpp b/ui/widgets/buttons.cpp
-index 690ba6f..f0f0064 100644
+index 690ba6f..a5f150c 100644
 --- a/ui/widgets/buttons.cpp
 +++ b/ui/widgets/buttons.cpp
 @@ -5,6 +5,7 @@
@@ -1180,7 +1180,15 @@ index 690ba6f..f0f0064 100644
  
  #include "ui/effects/ripple_animation.h"
  #include "ui/effects/cross_animation.h"
-@@ -121,6 +122,14 @@ void LinkButton::onStateChanged(State was, StateChangeSource source) {
+@@ -16,6 +17,7 @@
+ #include "ui/rect.h"
+ #include "ui/qt_object_factory.h"
+ #include "ui/round_rect.h"
++#include "styles/palette.h"
+ 
+ #include <QtGui/QtEvents>
+ 
+@@ -121,6 +123,14 @@ void LinkButton::onStateChanged(State was, StateChangeSource source) {
  RippleButton::RippleButton(QWidget *parent, const style::RippleAnimation &st)
  : AbstractButton(parent)
  , _st(st) {
@@ -1195,7 +1203,7 @@ index 690ba6f..f0f0064 100644
  }
  
  void RippleButton::clearState() {
-@@ -129,6 +138,8 @@ void RippleButton::clearState() {
+@@ -129,6 +139,8 @@ void RippleButton::clearState() {
  }
  
  void RippleButton::finishAnimating() {
@@ -1204,7 +1212,7 @@ index 690ba6f..f0f0064 100644
  	if (_ripple) {
  		_ripple.reset();
  		update();
-@@ -184,6 +195,15 @@ void RippleButton::paintRipple(QPainter &p, int x, int y, const QColor *colorOve
+@@ -184,6 +196,15 @@ void RippleButton::paintRipple(QPainter &p, int x, int y, const QColor *colorOve
  
  void RippleButton::onStateChanged(State was, StateChangeSource source) {
  	update();
@@ -1220,7 +1228,7 @@ index 690ba6f..f0f0064 100644
  
  	auto wasDown = static_cast<bool>(was & StateFlag::Down);
  	auto down = isDown();
-@@ -204,6 +224,24 @@ void RippleButton::onStateChanged(State was, StateChangeSource source) {
+@@ -204,6 +225,24 @@ void RippleButton::onStateChanged(State was, StateChangeSource source) {
  	}
  }
  
@@ -1245,7 +1253,7 @@ index 690ba6f..f0f0064 100644
  void RippleButton::ensureRipple() {
  	if (!_ripple) {
  		_ripple = std::make_unique<RippleAnimation>(_st, prepareRippleMask(), [this] { update(); });
-@@ -477,6 +515,10 @@ int RoundButton::contentWidth() const {
+@@ -477,6 +516,10 @@ int RoundButton::contentWidth() const {
  
  void RoundButton::paintEvent(QPaintEvent *e) {
  	Painter p(this);
@@ -1256,7 +1264,7 @@ index 690ba6f..f0f0064 100644
  
  	auto innerWidth = contentWidth();
  	auto rounded = rect().marginsRemoved(_st.padding);
-@@ -519,9 +561,16 @@ void RoundButton::paintEvent(QPaintEvent *e) {
+@@ -519,9 +562,16 @@ void RoundButton::paintEvent(QPaintEvent *e) {
  
  	auto over = isOver();
  	auto down = isDown();
@@ -1274,7 +1282,7 @@ index 690ba6f..f0f0064 100644
  
  	if (!_penOverride || _rippleOverride) {
  		paintRipple(
-@@ -642,11 +691,18 @@ void IconButton::setRippleColorOverride(const style::color *colorOverride) {
+@@ -642,11 +692,18 @@ void IconButton::setRippleColorOverride(const style::color *colorOverride) {
  float64 IconButton::iconOverOpacity() const {
  	return (isDown() || forceRippled())
  		? 1.
@@ -1294,7 +1302,7 @@ index 690ba6f..f0f0064 100644
  
  	paintRipple(p, _st.rippleAreaPosition, _rippleColorOverride ? &(*_rippleColorOverride)->c : nullptr);
  
-@@ -695,6 +751,10 @@ void IconButton::paintEvent(QPaintEvent *e) {
+@@ -695,6 +752,10 @@ void IconButton::paintEvent(QPaintEvent *e) {
  
  void IconButton::onStateChanged(State was, StateChangeSource source) {
  	RippleButton::onStateChanged(was, source);
@@ -1305,7 +1313,7 @@ index 690ba6f..f0f0064 100644
  
  	auto over = isOver();
  	auto wasOver = static_cast<bool>(was & StateFlag::Over);
-@@ -702,7 +762,9 @@ void IconButton::onStateChanged(State was, StateChangeSource source) {
+@@ -702,7 +763,9 @@ void IconButton::onStateChanged(State was, StateChangeSource source) {
  		if (_st.duration) {
  			auto from = over ? 0. : 1.;
  			auto to = over ? 1. : 0.;
@@ -1316,7 +1324,7 @@ index 690ba6f..f0f0064 100644
  		} else {
  			update();
  		}
-@@ -979,6 +1041,7 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
+@@ -979,6 +1042,7 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
  
  	const auto paintOver = (isOver() || isDown()) && !isDisabled();
  	paintBg(p, e->rect(), paintOver);
@@ -1324,7 +1332,7 @@ index 690ba6f..f0f0064 100644
  
  	paintRipple(p, 0, 0);
  
-@@ -991,7 +1054,18 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
+@@ -991,7 +1055,18 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
  }
  
  void SettingsButton::paintBg(Painter &p, const QRect &rect, bool over) const {
