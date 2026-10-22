@@ -1389,7 +1389,7 @@ index df0dc58..dec8e5b 100644
  	checkedChangedHook(animated);
  	if (changed) {
 diff --git a/ui/widgets/fields/input_field.cpp b/ui/widgets/fields/input_field.cpp
-index d57ac56..c1fc8ac 100644
+index d57ac56..d5b9398 100644
 --- a/ui/widgets/fields/input_field.cpp
 +++ b/ui/widgets/fields/input_field.cpp
 @@ -5,6 +5,7 @@
@@ -1420,7 +1420,7 @@ index d57ac56..c1fc8ac 100644
  	if (height() != newHeight) {
  		resize(width(), newHeight);
  		return true;
-@@ -2863,6 +2877,29 @@ void InputField::checkContentHeight() {
+@@ -2863,6 +2877,31 @@ void InputField::checkContentHeight() {
  	}
  }
  
@@ -1441,8 +1441,10 @@ index d57ac56..c1fc8ac 100644
 +	}
 +	const auto weak = base::make_weak(this);
 +	resize(width(), target);
++	if (weak && _focused) {
++		_inner->ensureCursorVisible();
++	}
 +	if (weak) {
-+		if (_focused) _inner->ensureCursorVisible();
 +		_heightChanges.fire({});
 +	}
 +}
@@ -1450,7 +1452,7 @@ index d57ac56..c1fc8ac 100644
  void InputField::paintSurrounding(
  		QPainter &p,
  		QRect clip,
-@@ -3296,7 +3333,9 @@ void InputField::focusOutEventInner(QFocusEvent *e) {
+@@ -3296,7 +3335,9 @@ void InputField::focusOutEventInner(QFocusEvent *e) {
  void InputField::setFocused(bool focused) {
  	if (_focused != focused) {
  		_focused = focused;
@@ -1461,7 +1463,7 @@ index d57ac56..c1fc8ac 100644
  		startPlaceholderAnimation();
  		startBorderAnimation();
  	}
-@@ -6297,6 +6336,12 @@ void InputField::insertFromMimeDataInner(const QMimeData *source) {
+@@ -6297,6 +6338,12 @@ void InputField::insertFromMimeDataInner(const QMimeData *source) {
  }
  
  void InputField::resizeEvent(QResizeEvent *e) {
