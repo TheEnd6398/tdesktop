@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_slide_animation.h"
 #include "ui/effects/motion.h"
+#include "ui/style/style_core_direction.h"
 #include "styles/style_fork_glass.h"
 #include "styles/style_basic.h"
 
@@ -20,7 +21,7 @@ void SlideAnimation::paintContents(QPainter &p) const {
 		const auto arriving = progress();
 		const auto reduced = !Ui::Motion::Enabled();
 		const auto horizontal = _direction != SlideDirection::FromBottom;
-		const auto sign = horizontal && (fromLeft != rtl()) ? -1 : 1;
+		const auto sign = horizontal && (fromLeft != style::RightToLeft()) ? -1 : 1;
 		const auto distance = reduced ? 0 : st::glassMotionTravel;
 		const auto offset = (1. - arriving) * distance * sign;
 		const auto &oldCache = fromLeft ? _cacheOver : _cacheUnder;
