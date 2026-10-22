@@ -9,6 +9,13 @@ add_executable(test_glass_blur
 target_include_directories(test_glass_blur PRIVATE ../..)
 target_link_libraries(test_glass_blur PRIVATE Qt6::Gui)
 enable_testing()
+add_executable(test_motion_model test_motion_model.cpp)
+target_include_directories(test_motion_model PRIVATE ../../../lib_ui)
+add_test(NAME motion_model COMMAND test_motion_model)
+add_executable(test_motion_paint test_motion_paint.cpp ../../../lib_ui/ui/effects/motion_paint.cpp)
+target_include_directories(test_motion_paint PRIVATE ../../../lib_ui)
+target_link_libraries(test_motion_paint PRIVATE Qt6::Gui)
+add_test(NAME motion_paint COMMAND test_motion_paint)
 add_test(NAME glass_blur COMMAND test_glass_blur)
 add_executable(test_glass_material
     test_glass_material.cpp

@@ -15,3 +15,5 @@ glassSelectionWidth: 3px;
 glassSelectionHeight: 24px;
 glassSectionGap: 16px;
 glassProfileHalo: 6px;
+glassMotionTravel: 14px;
+glassMessageTravel: 6px;

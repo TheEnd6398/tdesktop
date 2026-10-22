@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "core/ui_integration.h"
+#include "ui/aurora_motion.h"
 
 #include "ui/widgets/smooth_wheel_scroll.h"
 #include "ui/chat/glass_surface.h"
@@ -43,6 +44,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QLocale>
 
 namespace Core {
+
+Ui::Motion::Mode UiIntegration::motionMode() {
+	return Ui::AuroraMotion::Mode();
+}
 
 bool UiIntegration::paintSurface(
 		QPainter &p,

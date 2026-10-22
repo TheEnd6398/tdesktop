@@ -702,6 +702,7 @@ void InitMessageFieldHandlers(
 }
 
 void InitMessageFieldGeometry(not_null<Ui::InputField*> field) {
+	field->setHeightAnimated(true);
 	field->setMinHeight(
 		st::historySendSize.height() - 2 * st::historySendPadding);
 	field->setMaxHeight(st::historyComposeFieldMaxHeight);

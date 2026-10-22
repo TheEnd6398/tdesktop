@@ -159,6 +159,10 @@ void CallButton::setProgress(float64 progress) {
 
 void CallButton::paintEvent(QPaintEvent *e) {
 	QPainter p(this);
+	const auto compression = 1. - 0.04 * motionPress();
+	p.translate(rect().center());
+	p.scale(compression, compression);
+	p.translate(-rect().center());
 
 	auto bgPosition = myrtlpoint(_stFrom->bgPosition);
 	auto paintFrom = (_progress == 0.) || !_stTo;
@@ -212,6 +216,8 @@ void CallButton::paintEvent(QPaintEvent *e) {
 		p.drawImage(bgPosition, _bg);
 	}
 
+	paintMotion(p, QRect(bgPosition, QSize(_stFrom->bgSize, _stFrom->bgSize)),
+		_stFrom->bgSize / 2.);
 	auto rippleColorInterpolated = QColor();
 	auto rippleColorOverride = &rippleColorInterpolated;
 	if (_rippleOverride) {

@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/ui/dialogs_layout.h"
+#include "ui/effects/motion.h"
 
 #include "ui/chat/glass_surface.h"
 #include "styles/style_fork_glass.h"
@@ -493,17 +494,26 @@ void PaintRow(
 		st::glassGap, st::glassInset, st::glassGap, st::glassInset));
 	if (glass) {
 		p.fillRect(geometry, context.currentBg);
-		if (context.active || context.selected) {
-			Ui::Glass::PaintPanel(p, area, bg->color(),
+		const auto hover = context.hoverProgress < 0.
+			? (context.selected ? 1. : 0.) : context.hoverProgress;
+		if (context.active || hover > 0.) {
+			const auto tint = context.active ? bg->color()
+				: anim::color(context.currentBg->color(), st::dialogsBgOver->c, hover);
+			Ui::Glass::PaintPanel(p, area, tint,
 				Ui::Glass::Material::Soft, st::glassRowRadius);
+			Ui::Motion::PaintFeedback(p, area, st::glassRowRadius,
+				st::windowActiveTextFg->c, hover, 0.);
 			if (context.active) {
+				const auto reveal = Ui::Motion::Enabled()
+					? (0.4 + 0.6 * context.activeProgress) : 1.;
+				const auto indicatorHeight = int(std::lround(st::glassSelectionHeight * reveal));
 				const auto indicator = QRect(
 					style::RightToLeft()
 						? area.right() - st::glassSelectionWidth
 						: area.left(),
-					area.center().y() - st::glassSelectionHeight / 2,
+					area.center().y() - indicatorHeight / 2,
 					st::glassSelectionWidth,
-					st::glassSelectionHeight);
+					indicatorHeight);
 				Ui::Glass::PaintPanel(p, indicator,
 					st::windowActiveTextFg->c,
 					Ui::Glass::Material::Content,

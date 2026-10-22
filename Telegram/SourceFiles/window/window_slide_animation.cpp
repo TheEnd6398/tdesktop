@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_slide_animation.h"
+#include "ui/effects/motion.h"
+#include "styles/style_fork_glass.h"
 #include "styles/style_basic.h"
 
 
@@ -13,6 +15,23 @@ namespace Window {
 
 void SlideAnimation::paintContents(QPainter &p) const {
 	const auto retina = style::DevicePixelRatio();
+	if (Ui::Motion::CurrentMode() != Ui::Motion::Mode::Legacy) {
+		const auto fromLeft = (_direction == SlideDirection::FromLeft);
+		const auto arriving = progress();
+		const auto reduced = !Ui::Motion::Enabled();
+		const auto horizontal = _direction != SlideDirection::FromBottom;
+		const auto sign = horizontal && (fromLeft != rtl()) ? -1 : 1;
+		const auto distance = reduced ? 0 : st::glassMotionTravel;
+		const auto offset = (1. - arriving) * distance * sign;
+		const auto &oldCache = fromLeft ? _cacheOver : _cacheUnder;
+		const auto &newCache = fromLeft ? _cacheUnder : _cacheOver;
+		p.save();
+		p.drawPixmap(0, 0, oldCache);
+		p.setOpacity(arriving);
+		p.drawPixmap(QPointF(horizontal ? offset : 0., horizontal ? 0. : offset), newCache);
+		p.restore();
+		return;
+	}
 
 	const auto slideLeft = (_direction == SlideDirection::FromLeft);
 	const auto progress = _animation.value(slideLeft ? 0. : 1.);
@@ -207,8 +226,8 @@ void SlideAnimation::start() {
 		[this] { animationCallback(); },
 		fromLeft ? 1. : 0.,
 		fromLeft ? 0. : 1.,
-		duration,
-		curve);
+		Ui::Motion::Duration(Ui::Motion::Role::Panel, duration),
+		Ui::Motion::Curve(Ui::Motion::Role::Panel, curve));
 	if (const auto onstack = _repaintCallback) {
 		onstack();
 	}

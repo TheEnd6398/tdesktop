@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/tabbed_selector.h"
+#include "ui/effects/motion.h"
 
 #include "chat_helpers/emoji_list_widget.h"
 #include "chat_helpers/stickers_list_widget.h"
@@ -145,19 +146,20 @@ void TabbedSelector::SlideAnimation::paintFrame(
 
 	auto leftToRight = (_direction == Direction::LeftToRight);
 
-	auto easeOut = anim::easeOutCirc(1., dt);
-	auto easeIn = anim::easeInCirc(1., dt);
+	auto easeOut = Ui::Motion::Curve(Ui::Motion::Role::Panel, anim::easeOutCirc)(1., dt);
+	auto easeIn = Ui::Motion::Curve(Ui::Motion::Role::Panel, anim::easeInCirc, true)(1., dt);
 
-	auto arrivingCoord = anim::interpolate(_innerWidth, 0, easeOut);
-	auto departingCoord = anim::interpolate(0, _innerWidth, easeIn);
+	const auto reduced = Ui::Motion::CurrentMode() == Ui::Motion::Mode::Reduced;
+	auto arrivingCoord = reduced ? 0 : anim::interpolate(_innerWidth, 0, easeOut);
+	auto departingCoord = reduced ? 0 : anim::interpolate(0, _innerWidth, easeIn);
 	if (auto decrease = (arrivingCoord % style::DevicePixelRatio())) {
 		arrivingCoord -= decrease;
 	}
 	if (auto decrease = (departingCoord % style::DevicePixelRatio())) {
 		departingCoord -= decrease;
 	}
-	auto arrivingAlpha = easeIn;
-	auto departingAlpha = 1. - easeOut;
+	auto arrivingAlpha = reduced ? dt : easeIn;
+	auto departingAlpha = reduced ? 1. : 1. - easeOut;
 	auto leftCoord = (leftToRight ? arrivingCoord : departingCoord) * -1;
 	auto leftAlpha = (leftToRight ? arrivingAlpha : departingAlpha);
 	auto rightCoord = (leftToRight ? departingCoord : arrivingCoord);
@@ -1392,7 +1394,7 @@ void TabbedSelector::switchTab() {
 		[=] { update(); },
 		0.,
 		1.,
-		st::emojiPanSlideDuration,
+		Ui::Motion::Duration(Ui::Motion::Role::Panel, st::emojiPanSlideDuration),
 		anim::linear);
 	update();
 

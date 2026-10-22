@@ -5,6 +5,7 @@
 #include "ui/widgets/scroll_area.h"
 #include "ui/widgets/elastic_scroll.h"
 #include "ui/effects/animations.h"
+#include "ui/effects/motion.h"
 #include "ui/power_saving.h"
 #include "styles/style_fork_glass.h"
 
@@ -15,8 +16,6 @@
 
 namespace Ui {
 namespace {
-
-constexpr auto kWheelDuration = crl::time(220);
 
 class WheelMotionBase : public QObject {
 public:
@@ -95,7 +94,7 @@ WheelMotion<Scroll>::WheelMotion(not_null<Scroll*> scroll, bool horizontal)
 : WheelMotionBase(scroll)
 , _scroll(scroll)
 , _horizontal(horizontal)
-, _model(kWheelDuration) {
+, _model(Motion::Response(Motion::Role::Scroll)) {
 	setObjectName(horizontal ? u"liquidGlassHorizontalWheel"_q : u"liquidGlassWheel"_q);
 	_clock.init([=](crl::time now) { tick(now); });
 	QCoreApplication::instance()->installEventFilter(this);
@@ -138,7 +137,8 @@ void WheelMotion<Scroll>::cancel() {
 
 template <typename Scroll>
 bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
-	if (!_enabled || anim::Disabled() || !(IsDiscreteWheel(*event) || (_horizontal && IsDiscreteWheel(*event, true)))
+	if (!_enabled || anim::Disabled() || Motion::CurrentMode() == Motion::Mode::Reduced
+		|| !(IsDiscreteWheel(*event) || (_horizontal && IsDiscreteWheel(*event, true)))
 		|| _scroll->isHidden() || !_scroll->isVisibleTo(_scroll->window())
 		|| _scroll->window()->isHidden()) {
 		cancel();
@@ -173,9 +173,11 @@ bool WheelMotion<Scroll>::wheel(not_null<QWheelEvent*> event) {
 
 template <typename Scroll>
 void WheelMotion<Scroll>::tick(crl::time now) {
-	if (!_enabled || anim::Disabled() || _scroll->isHidden()
+	if (!_enabled || anim::Disabled() || Motion::CurrentMode() == Motion::Mode::Reduced
+		|| _scroll->isHidden()
 		|| !_scroll->isVisibleTo(_scroll->window())
 		|| _scroll->window()->isHidden()
+		|| _scroll->window()->isMinimized()
 		|| Maximum(_scroll, _horizontal) != _maximum
 		|| (_lastApplied >= 0 && Position(_scroll, _horizontal) != _lastApplied)) {
 		cancel();
@@ -221,6 +223,7 @@ bool WheelMotion<Scroll>::eventFilter(QObject *object, QEvent *event) {
 	case QEvent::Resize:
 	case QEvent::ChildAdded:
 	case QEvent::WindowDeactivate:
+	case QEvent::WindowStateChange:
 		if (widget == _scroll || widget->isAncestorOf(_scroll)) {
 			cancel();
 		}

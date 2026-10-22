@@ -50,6 +50,7 @@ public:
 	QString angleBackendFilePath() override;
 
 	bool processScrollWheel(QWidget *scroll, QWheelEvent *event) override;
+	Ui::Motion::Mode motionMode() override;
 	bool paintSurface(
 		QPainter &p,
 		const QRect &rect,

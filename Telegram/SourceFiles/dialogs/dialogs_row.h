@@ -73,8 +73,17 @@ public:
 	[[nodiscard]] Ui::PeerUserpicView &userpicView() const {
 		return _userpic;
 	}
+	[[nodiscard]] std::pair<double, double> motionState(
+		QWidget *owner,
+		Fn<void()> repaint,
+		bool hover,
+		bool active,
+		bool animate) const;
+	[[nodiscard]] bool motionAnimating() const;
 
 private:
+	struct MotionState;
+	mutable std::unique_ptr<MotionState> _motion;
 	mutable Ui::PeerUserpicView _userpic;
 	mutable std::unique_ptr<Ui::RippleAnimation> _ripple;
 

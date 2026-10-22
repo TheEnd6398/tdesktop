@@ -1103,10 +1103,16 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 			: _chatPreviewRow.key
 			? (row->key() == _chatPreviewRow.key)
 			: selected;
+		const auto motion = row->motionState(this,
+			[=] { updateSelectedRow(key); }, cacheSelected, active,
+			!_rowsScrollCache.scrolling());
+		context.hoverProgress = motion.first;
+		context.activeProgress = motion.second;
 		const auto cacheAllowed = _rowsScrollCache.scrolling()
 			&& (!videoUserpic || !context.narrow)
 			&& !active
 			&& !cacheSelected
+			&& !row->motionAnimating()
 			&& !context.quickActionContext
 			&& !context.rightButton
 			&& !expanding

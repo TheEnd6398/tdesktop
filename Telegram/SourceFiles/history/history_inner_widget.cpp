@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_inner_widget.h"
+#include "ui/effects/motion.h"
+#include "styles/style_fork_glass.h"
 
 #include "ui/chat/glass_material.h"
 #include "ui/chat/glass_surface.h"
@@ -473,9 +475,36 @@ HistoryInner::HistoryInner(
 		const auto history = item->history();
 		return (history == _history)
 			|| (_migrated && history == _migrated);
-	}) | rpl::on_next([=] {
+	}) | rpl::on_next([=](not_null<HistoryItem*> item) {
 		checkAnnounceFirstMessages();
+		if (Ui::Motion::Enabled() && isVisible() && !elementAnimationsPaused()
+			&& item->isRegular() && item->history() == _history
+			&& _history->loadedAtBottom()
+			&& _visibleAreaBottom >= height() - st::msgMargin.bottom()
+			&& _messageEntrances.size() < 12) {
+			_messageEntrances.emplace(item->fullId(), crl::now());
+			if (!_messageEntranceClock.animating()) {
+				_messageEntranceClock.start();
+			}
+		}
 	}, lifetime());
+	_messageEntranceClock.init([=](crl::time now) {
+		if (!Ui::Motion::Enabled() || !isVisible() || elementAnimationsPaused()) {
+			_messageEntrances.clear();
+			update();
+			return false;
+		}
+		for (auto i = _messageEntrances.begin(); i != _messageEntrances.end();) {
+			const auto item = session().data().message(i->first);
+			if (item) repaintItem(item);
+			if (!item || now - i->second >= Ui::Motion::Response(Ui::Motion::Role::Message)) {
+				i = _messageEntrances.erase(i);
+			} else {
+				++i;
+			}
+		}
+		return !_messageEntrances.empty();
+	});
 	setupThanosEffect();
 	session().data().viewRemoved(
 	) | rpl::on_next(
@@ -1707,7 +1736,23 @@ void HistoryInner::paintEvent(QPaintEvent *e) {
 				context.fullMessageSelected = selection.fullMessageSelected;
 				context.messageSelection = selection.messageSelection;
 				context.highlight = _widget->itemHighlight(item);
-				view->draw(p, context);
+				const auto entrance = _messageEntrances.find(item->fullId());
+				if (!capturing && Ui::Motion::Enabled() && entrance != _messageEntrances.end()) {
+					const auto dt = std::clamp((crl::now() - entrance->second)
+						/ double(Ui::Motion::Response(Ui::Motion::Role::Message)), 0., 1.);
+					const auto reveal = Ui::Motion::Curve(Ui::Motion::Role::Message)(1., dt);
+					p.save();
+					p.setClipRect(QRect(0, 0, width(), height), Qt::IntersectClip);
+					p.setOpacity(p.opacity() * (0.65 + 0.35 * reveal));
+					const auto offset = st::glassMessageTravel * (1. - reveal);
+					p.translate(0., offset);
+					auto animated = context;
+					animated.translate(0, -int(std::lround(offset)));
+					view->draw(p, animated);
+					p.restore();
+				} else {
+					view->draw(p, context);
+				}
 				processPainted(view, top, height);
 			}
 			top += height;

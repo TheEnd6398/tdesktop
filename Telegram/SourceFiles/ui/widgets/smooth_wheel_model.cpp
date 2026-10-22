@@ -34,8 +34,15 @@ bool SmoothWheelModel::scrollBy(
 		return false;
 	}
 	const auto direction = (distance > 0.) ? 1 : -1;
+	if (_active) {
+		if (!advance(now)) {
+			_velocity = 0.;
+		}
+	}
 	if (_direction && direction != _direction) {
 		_active = false;
+		_velocity = 0.;
+		_remainder = 0.;
 	}
 	_direction = direction;
 	const auto accumulated = _remainder + distance;
@@ -47,6 +54,9 @@ bool SmoothWheelModel::scrollBy(
 	const auto base = _active ? _target : position;
 	_target = int(std::clamp(base + whole, 0., double(maximum)));
 	_from = position;
+	_slope = _active && _target != _from
+		? std::clamp(_velocity * _duration / (_target - _from), 0., 3.)
+		: 3.;
 	_started = now;
 	_active = (_target != _from);
 	return true;
@@ -57,8 +67,13 @@ std::optional<int> SmoothWheelModel::advance(std::int64_t now) {
 		return std::nullopt;
 	}
 	const auto progress = std::clamp((now - _started) / double(_duration), 0., 1.);
-	const auto remaining = 1. - progress;
-	const auto eased = 1. - remaining * remaining * remaining;
+	const auto square = progress * progress;
+	const auto cube = square * progress;
+	const auto eased = 3. * square - 2. * cube
+		+ _slope * (cube - 2. * square + progress);
+	_velocity = (_target - _from) / double(_duration)
+		* (6. * progress * (1. - progress)
+			+ _slope * (3. * square - 4. * progress + 1.));
 	const auto value = int(std::lround(_from + (_target - _from) * eased));
 	if (progress >= 1.) {
 		_active = false;
@@ -76,6 +91,7 @@ int SmoothWheelModel::target() const {
 
 void SmoothWheelModel::cancel() {
 	_active = false;
+	_velocity = 0.;
 	_remainder = 0.;
 	_direction = 0;
 }

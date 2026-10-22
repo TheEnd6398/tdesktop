@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_filters_menu.h"
+#include "ui/effects/motion.h"
 
 #include "ui/chat/glass_surface.h"
 #include "styles/style_fork_glass.h"
@@ -54,6 +55,49 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QtEvents>
 
 namespace Window {
+
+struct FiltersMenu::SelectionMotion {
+	explicit SelectionMotion(not_null<Ui::RpWidget*> parent)
+	: indicator(parent)
+	, top(indicator, 0., [=] { position(); }) {
+		indicator->setAttribute(Qt::WA_TransparentForMouseEvents);
+		indicator->paintRequest() | rpl::on_next([=] {
+			auto p = QPainter(indicator);
+			Ui::Glass::PaintPanel(p, indicator->rect(), st::windowActiveTextFg->c,
+				Ui::Glass::Material::Content, st::glassSelectionWidth);
+		}, indicator->lifetime());
+		indicator->hide();
+	}
+	void follow(not_null<Ui::RpWidget*> target) {
+		if (!Ui::Motion::Enabled()) {
+			indicator->hide();
+			ready = false;
+			return;
+		}
+		const auto area = target->rect().translated(
+			target->mapTo(indicator->parentWidget(), QPoint()));
+		left = style::RightToLeft() ? area.right() - st::glassInset
+			- st::glassSelectionWidth : area.left() + st::glassInset;
+		const auto y = area.center().y() - st::glassSelectionHeight / 2;
+		if (!ready) {
+			top.reset(y);
+			indicator->show();
+			ready = true;
+		} else {
+			top.to(y);
+		}
+		indicator->raise();
+		position();
+	}
+	void position() {
+		indicator->setGeometry(left, int(std::lround(top.value())),
+			st::glassSelectionWidth, st::glassSelectionHeight);
+	}
+	object_ptr<Ui::RpWidget> indicator;
+	Ui::Motion::Value top;
+	int left = 0;
+	bool ready = false;
+};
 namespace {
 
 // The folder tabs container, exposed as a list to screen readers.
@@ -610,9 +654,15 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 	const auto raw = button.get();
 #ifdef TDESKTOP_FORK_LIQUID_GLASS
 	raw->setAttribute(Qt::WA_OpaquePaintEvent, false);
+	if (!_selectionMotion) {
+		_selectionMotion = std::make_unique<SelectionMotion>(&_outer);
+	}
 	raw->paintRequest() | rpl::on_next([=] {
 		auto p = QPainter(raw);
 		const auto active = (_session->activeChatsFilterCurrent() == id);
+		if (active && id >= 0) {
+			_selectionMotion->follow(raw);
+		}
 		const auto bg = active ? originalStyle->textBgActive : originalStyle->textBg;
 		if (!Ui::Glass::Enabled()) {
 			p.fillRect(raw->rect(), bg);

@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/effects/message_sending_animation_controller.h"
+#include "ui/effects/motion.h"
 
 #include "data/data_document.h"
 #include "data/data_session.h"
@@ -196,8 +197,8 @@ Content::Content(
 		std::move(animationCallback),
 		0.,
 		1.,
-		st::itemRevealDuration,
-		anim::easeOutQuint);
+		Motion::Duration(Motion::Role::Message, st::itemRevealDuration),
+		Motion::Curve(Motion::Role::Message, anim::easeOutQuint));
 }
 
 HistoryView::Element *Content::maybeView() const {
@@ -441,7 +442,7 @@ void MessageSendingAnimationController::subscribeToDestructions() {
 
 void MessageSendingAnimationController::appendSending(
 		MessageSendingAnimationFrom from) {
-	if (anim::Disabled()) {
+	if (anim::Disabled() || Motion::CurrentMode() == Motion::Mode::Reduced) {
 		return;
 	}
 	if (from.localId) {
@@ -451,7 +452,9 @@ void MessageSendingAnimationController::appendSending(
 
 void MessageSendingAnimationController::startAnimation(SendingInfoTo &&to) {
 	if (anim::Disabled()
+		|| Motion::CurrentMode() == Motion::Mode::Reduced
 		|| PowerSaving::On(PowerSaving::Flag::kChatEffects)) {
+		_itemSendPending.clear();
 		return;
 	}
 	const auto container = _controller->content();

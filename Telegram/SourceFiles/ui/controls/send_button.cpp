@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/controls/send_button.h"
+#include "ui/effects/motion.h"
 
 #include "lang/lang_tag.h"
 #include "lottie/lottie_icon.h"
@@ -140,7 +141,8 @@ void SendButton::setState(State state) {
 			[=] { updateSize(); update(); },
 			0.,
 			1.,
-			st::universalDuration);
+			Motion::Duration(Motion::Role::State, st::universalDuration),
+			Motion::Curve(Motion::Role::State));
 		setPointerCursor(_state.type != Type::Slowmode);
 		updateSize();
 	}
@@ -155,6 +157,10 @@ void SendButton::finishAnimating() {
 
 void SendButton::paintEvent(QPaintEvent *e) {
 	auto p = QPainter(this);
+	const auto compression = 1. - 0.045 * motionPress();
+	p.translate(rect().center());
+	p.scale(compression, compression);
+	p.translate(-rect().center());
 
 	auto over = (isDown() || isOver());
 

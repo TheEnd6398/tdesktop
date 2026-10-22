@@ -33,6 +33,7 @@ void NavigationButton::paintEvent(QPaintEvent *event) {
 	const auto tint = anim::color(st().textBg, st().textBgOver,
 		_hover.value(over ? 1. : 0.));
 	PaintPanel(p, area, tint, Material::Soft, st::glassRowRadius);
+	paintMotion(p, area, st::glassRowRadius);
 	paintRipple(p, 0, 0);
 	paintText(p, over, width());
 	paintToggle(p, width());
@@ -52,7 +53,8 @@ void NavigationButton::onStateChanged(State was, StateChangeSource source) {
 		return;
 	}
 	_hover.start([=] { update(); }, _hover.value(over ? 0. : 1.),
-		over ? 1. : 0., kHoverDuration);
+		over ? 1. : 0., Motion::Duration(Motion::Role::Hover, kHoverDuration),
+		Motion::Curve(Motion::Role::Hover));
 }
 
 } // namespace Ui::Glass

@@ -1,3 +1,19 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1d6f55b..2b9293d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -50,6 +50,11 @@ PRIVATE
+     ui/effects/animation_value_f.h
+     ui/effects/animations.cpp
+     ui/effects/animations.h
++    ui/effects/motion.cpp
++    ui/effects/motion.h
++    ui/effects/motion_model.h
++    ui/effects/motion_paint.cpp
++    ui/effects/motion_paint.h
+     ui/effects/cross_animation.cpp
+     ui/effects/cross_animation.h
+     ui/effects/cross_line.cpp
 diff --git a/ui/colors.palette b/ui/colors.palette
 index e2ba0d6..1a0b717 100644
 --- a/ui/colors.palette
@@ -364,11 +380,542 @@ index e2ba0d6..1a0b717 100644
  sideBarBadgeBgActive: sideBarBadgeBg; // filters side bar badge background when folder is open
  sideBarBadgeBgMuted: #8393a3; // filters side bar unimportant badge background
  sideBarBadgeBgMutedActive: sideBarBadgeBg; // filters side bar unimportant badge background when folder is open
+diff --git a/ui/effects/animations.cpp b/ui/effects/animations.cpp
+index bb268d6..3d06260 100644
+--- a/ui/effects/animations.cpp
++++ b/ui/effects/animations.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/effects/animations.h"
++#include "ui/effects/motion.h"
+ 
+ #include "base/invoke_queued.h"
+ #include "ui/ui_utility.h"
+@@ -184,7 +185,8 @@ void Manager::schedule() {
+ 			_forceImmediateUpdate = false;
+ 			updateQueued();
+ 		} else {
+-			const auto next = _lastUpdateTime + kAnimationTick;
++			const auto next = _lastUpdateTime + (Motion::Enabled()
++				? Motion::FrameInterval() : kAnimationTick);
+ 			const auto now = crl::now();
+ 			if (now < next) {
+ 				_timerId = startTimer(next - now, Qt::PreciseTimer);
+diff --git a/ui/effects/fade_animation.cpp b/ui/effects/fade_animation.cpp
+index e08eb4d..f6690e6 100644
+--- a/ui/effects/fade_animation.cpp
++++ b/ui/effects/fade_animation.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/effects/fade_animation.h"
++#include "ui/effects/motion.h"
+ 
+ #include "ui/ui_utility.h"
+ #include "ui/painter.h"
+@@ -54,7 +55,8 @@ bool FadeAnimation::paint(QPainter &p) {
+ 			(1 - kWideScale) / 2 * _size.height(),
+ 			kWideScale * _size.width(),
+ 			kWideScale * _size.height());
+-		auto scale = opacity + (1. - opacity) * _scale;
++		auto scale = (Motion::CurrentMode() == Motion::Mode::Reduced)
++			? 1. : opacity + (1. - opacity) * _scale;
+ 		auto shownWidth = anim::interpolate(
+ 			(1 - kWideScale) / 2 * _size.width(),
+ 			0,
+@@ -161,7 +163,9 @@ void FadeAnimation::startAnimation(int duration) {
+ 	}
+ 	auto from = _visible ? 0. : 1.;
+ 	auto to = _visible ? 1. : 0.;
+-	_animation.start([this]() { updateCallback(); }, from, to, duration);
++	_animation.start([this]() { updateCallback(); }, from, to,
++		Motion::Duration(Motion::Role::Popup, duration, !_visible),
++		Motion::Curve(Motion::Role::Popup, anim::linear, !_visible));
+ 	updateCallback();
+ 	if (_widget->isHidden()) {
+ 		_widget->show();
+diff --git a/ui/effects/motion.cpp b/ui/effects/motion.cpp
+new file mode 100644
+index 0000000..e4cd8bb
+--- /dev/null
++++ b/ui/effects/motion.cpp
+@@ -0,0 +1,133 @@
++#include "ui/effects/motion.h"
++#include "ui/effects/motion_paint.h"
++
++#include "ui/integration.h"
++#include "styles/style_basic.h"
++#include <QtGui/QGuiApplication>
++#include <QtGui/QScreen>
++#include <QtGui/QWindow>
++#include <QtGui/QPainter>
++#include <QtGui/QPainterPath>
++#include <QtWidgets/QWidget>
++
++namespace Ui::Motion {
++
++Mode CurrentMode() {
++	return anim::Disabled()
++		? Mode::Disabled
++		: Integration::Exists()
++		? Integration::Instance().motionMode()
++		: Mode::Legacy;
++}
++
++bool Enabled() {
++	return CurrentMode() == Mode::Full;
++}
++
++crl::time Duration(Role role, crl::time fallback, bool exiting) {
++	const auto mode = CurrentMode();
++	if (!fallback || mode == Mode::Legacy) {
++		return fallback;
++	} else if (mode == Mode::Disabled) {
++		return 0;
++	} else if (mode == Mode::Reduced) {
++		return std::min(fallback, crl::time(exiting ? 60 : 80));
++	}
++	return crl::time(Response(role) * (exiting ? 0.8 : 1.));
++}
++
++anim::transition Curve(Role role, anim::transition fallback, bool exiting) {
++	if (CurrentMode() == Mode::Legacy) {
++		return fallback;
++	} else if (!Enabled()) {
++		return anim::linear;
++	} else if (exiting) {
++		return anim::easeInCubic;
++	} else if (role == Role::State || role == Role::Badge) {
++		return anim::sineInOut;
++	}
++	return anim::easeOutQuint;
++}
++
++int FrameInterval() {
++	if (!Enabled()) {
++		return FrameInterval(60.);
++	}
++	const auto window = QGuiApplication::focusWindow();
++	const auto screen = window ? window->screen() : QGuiApplication::primaryScreen();
++	return FrameInterval(screen ? screen->refreshRate() : 60.);
++}
++
++Value::Value(QWidget *widget, double value, Fn<void()> repaint)
++: _widget(widget)
++, _model(value)
++, _clock([=](crl::time now) { return tick(now); })
++, _repaint(std::move(repaint)) {
++}
++
++void Value::to(double target, Role role) {
++	if (target == _model.target()) {
++		if (!Enabled()) {
++			finish();
++		}
++		return;
++	} else if (!Enabled() || !_widget || !_widget->isVisible()
++		|| _widget->window()->isMinimized()) {
++		reset(target);
++		return;
++	}
++	_model.retarget(target, crl::now(), Response(role) * anim::SlowMultiplier());
++	if (!_clock.animating()) {
++		_clock.start();
++	}
++	_widget->update();
++}
++
++void Value::reset(double value) {
++	_clock.stop();
++	_model.reset(value);
++}
++
++void Value::finish() {
++	reset(_model.target());
++}
++
++double Value::value() const {
++	return Enabled() ? _model.value() : _model.target();
++}
++
++bool Value::animating() const {
++	return _clock.animating();
++}
++
++bool Value::tick(crl::time now) {
++	if (!Enabled() || !_widget || !_widget->isVisible()
++		|| _widget->window()->isMinimized()) {
++		_model.reset(_model.target());
++	} else {
++		_model.advance(now);
++	}
++	const auto active = _model.active();
++	if (_widget && _widget->isVisible()) {
++		if (const auto onstack = _repaint) {
++			onstack();
++		} else {
++			_widget->update();
++		}
++	}
++	return active;
++}
++
++void PaintFeedback(
++		QPainter &p,
++		QRectF area,
++		double radius,
++		QColor accent,
++		double hover,
++		double press) {
++	if (Enabled()) {
++		PaintInteraction(p, area, radius, st::lineWidth, accent, hover, press);
++	}
++}
++
++} // namespace Ui::Motion
+diff --git a/ui/effects/motion.h b/ui/effects/motion.h
+new file mode 100644
+index 0000000..f4d0ad6
+--- /dev/null
++++ b/ui/effects/motion.h
+@@ -0,0 +1,46 @@
++#pragma once
++
++#include "ui/effects/animations.h"
++#include "ui/effects/motion_model.h"
++#include <QtCore/QPointer>
++
++class QWidget;
++
++namespace Ui::Motion {
++
++[[nodiscard]] Mode CurrentMode();
++[[nodiscard]] bool Enabled();
++[[nodiscard]] crl::time Duration(Role role, crl::time fallback, bool exiting = false);
++[[nodiscard]] anim::transition Curve(
++	Role role,
++	anim::transition fallback = anim::linear,
++	bool exiting = false);
++[[nodiscard]] int FrameInterval();
++
++class Value final {
++public:
++	explicit Value(QWidget *widget, double value = 0., Fn<void()> repaint = nullptr);
++	void to(double target, Role role = Role::State);
++	void reset(double value);
++	void finish();
++	[[nodiscard]] double value() const;
++	[[nodiscard]] bool animating() const;
++
++private:
++	bool tick(crl::time now);
++
++	QPointer<QWidget> _widget;
++	SpringModel _model;
++	Animations::Basic _clock;
++	Fn<void()> _repaint;
++};
++
++void PaintFeedback(
++	QPainter &p,
++	QRectF area,
++	double radius,
++	QColor accent,
++	double hover,
++	double press);
++
++} // namespace Ui::Motion
+diff --git a/ui/effects/motion_model.h b/ui/effects/motion_model.h
+new file mode 100644
+index 0000000..034b580
+--- /dev/null
++++ b/ui/effects/motion_model.h
+@@ -0,0 +1,88 @@
++#pragma once
++
++#include <algorithm>
++#include <cmath>
++#include <cstdint>
++
++namespace Ui::Motion {
++
++enum class Mode { Legacy, Full, Reduced, Disabled };
++enum class Role { Hover, Press, State, Popup, Panel, Message, Badge, Scroll };
++
++[[nodiscard]] constexpr int Response(Role role) {
++	switch (role) {
++	case Role::Hover: return 140;
++	case Role::Press: return 150;
++	case Role::State: return 190;
++	case Role::Popup: return 220;
++	case Role::Panel: return 280;
++	case Role::Message: return 180;
++	case Role::Badge: return 160;
++	case Role::Scroll: return 220;
++	}
++	return 190;
++}
++
++[[nodiscard]] inline int FrameInterval(double refreshRate) {
++	return int(1000. / std::clamp(
++		std::isfinite(refreshRate) && refreshRate > 0. ? refreshRate : 60.,
++		60., 500.));
++}
++
++class SpringModel final {
++public:
++	explicit SpringModel(double value = 0.) {
++		reset(value);
++	}
++
++	void reset(double value) {
++		_value = _from = _target = value;
++		_velocity = _initialVelocity = 0.;
++		_active = false;
++	}
++
++	void retarget(double target, std::int64_t now, int response) {
++		advance(now);
++		if (target == _target) {
++			return;
++		}
++		_from = _value;
++		_initialVelocity = _velocity;
++		_target = target;
++		_started = now;
++		_frequency = 8. / std::max(1, response) * 1000.;
++		_active = true;
++	}
++
++	void advance(std::int64_t now) {
++		if (!_active) {
++			return;
++		}
++		const auto elapsed = std::max(std::int64_t(0), now - _started) / 1000.;
++		const auto offset = _from - _target;
++		const auto impulse = _initialVelocity + _frequency * offset;
++		const auto decay = std::exp(-_frequency * elapsed);
++		_value = _target + (offset + impulse * elapsed) * decay;
++		_velocity = (_initialVelocity - _frequency * impulse * elapsed) * decay;
++		if (elapsed * _frequency >= 12.) {
++			reset(_target);
++		}
++	}
++
++	[[nodiscard]] double value() const { return _value; }
++	[[nodiscard]] double velocity() const { return _velocity; }
++	[[nodiscard]] double target() const { return _target; }
++	[[nodiscard]] bool active() const { return _active; }
++
++private:
++	std::int64_t _started = 0;
++	double _from = 0.;
++	double _value = 0.;
++	double _target = 0.;
++	double _velocity = 0.;
++	double _initialVelocity = 0.;
++	double _frequency = 1.;
++	bool _active = false;
++};
++
++} // namespace Ui::Motion
+diff --git a/ui/effects/motion_paint.cpp b/ui/effects/motion_paint.cpp
+new file mode 100644
+index 0000000..d4bba76
+--- /dev/null
++++ b/ui/effects/motion_paint.cpp
+@@ -0,0 +1,50 @@
++#include "ui/effects/motion_paint.h"
++
++#include <QtGui/QPainter>
++#include <QtGui/QPainterPath>
++#include <algorithm>
++
++namespace Ui::Motion {
++
++void PaintInteraction(
++		QPainter &p,
++		QRectF area,
++		double radius,
++		double edge,
++		QColor accent,
++		double hover,
++		double press) {
++	if (area.isEmpty()) {
++		return;
++	}
++	hover = std::clamp(hover, 0., 1.);
++	press = std::clamp(press, 0., 1.);
++	if (hover <= 0.001 && press <= 0.001) {
++		return;
++	}
++	p.save();
++	p.setRenderHint(QPainter::Antialiasing);
++	auto path = QPainterPath();
++	const auto compression = 0.025 * press;
++	area.adjust(area.width() * compression, area.height() * compression,
++		-area.width() * compression, -area.height() * compression);
++	path.addRoundedRect(area, radius, radius);
++	p.setClipPath(path, Qt::IntersectClip);
++	const auto light = QPointF(area.left() + area.width() * (0.25 + 0.35 * hover),
++		area.top() + area.height() * (0.15 + 0.5 * press));
++	auto gradient = QRadialGradient(light, std::max(area.width(), area.height()));
++	accent.setAlphaF((0.10 * hover + 0.13 * press) * accent.alphaF());
++	gradient.setColorAt(0., accent);
++	accent.setAlpha(0);
++	gradient.setColorAt(1., accent);
++	p.fillPath(path, gradient);
++	auto rim = QColor(Qt::white);
++	rim.setAlphaF(0.10 * hover + 0.14 * press);
++	p.setPen(QPen(rim, edge));
++	p.setBrush(Qt::NoBrush);
++	p.drawPath(path);
++	p.restore();
++}
++
++
++} // namespace Ui::Motion
+diff --git a/ui/effects/motion_paint.h b/ui/effects/motion_paint.h
+new file mode 100644
+index 0000000..a15858c
+--- /dev/null
++++ b/ui/effects/motion_paint.h
+@@ -0,0 +1,19 @@
++#pragma once
++
++#include <QtGui/QColor>
++#include <QtCore/QRectF>
++
++class QPainter;
++
++namespace Ui::Motion {
++
++void PaintInteraction(
++	QPainter &p,
++	QRectF area,
++	double radius,
++	double edge,
++	QColor accent,
++	double hover,
++	double press);
++
++} // namespace Ui::Motion
+diff --git a/ui/effects/panel_animation.cpp b/ui/effects/panel_animation.cpp
+index fd2a4d4..7140c6c 100644
+--- a/ui/effects/panel_animation.cpp
++++ b/ui/effects/panel_animation.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/effects/panel_animation.h"
++#include "ui/effects/motion.h"
+ 
+ #include "ui/effects/animation_value.h"
+ #include "ui/widgets/shadow.h"
+@@ -324,14 +325,15 @@ void PanelAnimation::start() {
+ 
+ auto PanelAnimation::computeState(float64 dt, float64 opacity) const
+ -> PaintState {
+-	auto &transition = anim::easeOutCirc;
++	const auto transition = Motion::Curve(Motion::Role::Popup, anim::easeOutCirc);
++	const auto reduced = Motion::CurrentMode() == Motion::Mode::Reduced;
+ 	if (dt < _alphaDuration) {
+ 		opacity *= transition(1., dt / _alphaDuration);
+ 	}
+-	const auto widthProgress = (_startWidth < 0 || dt >= _widthDuration)
++	const auto widthProgress = (reduced || _startWidth < 0 || dt >= _widthDuration)
+ 		? 1.
+ 		: transition(1., dt / _widthDuration);
+-	const auto heightProgress = (_startHeight < 0 || dt >= _heightDuration)
++	const auto heightProgress = (reduced || _startHeight < 0 || dt >= _heightDuration)
+ 		? 1.
+ 		: transition(1., dt / _heightDuration);
+ 	const auto frameWidth = (widthProgress < 1.)
+@@ -345,7 +347,7 @@ auto PanelAnimation::computeState(float64 dt, float64 opacity) const
+ 		.opacity = opacity,
+ 		.widthProgress = widthProgress,
+ 		.heightProgress = heightProgress,
+-		.fade = transition(1., dt),
++		.fade = reduced ? 1. : transition(1., dt),
+ 		.width = frameWidth / ratio,
+ 		.height = frameHeight / ratio,
+ 	};
+diff --git a/ui/effects/slide_animation.cpp b/ui/effects/slide_animation.cpp
+index 06ad3ed..03c0e83 100644
+--- a/ui/effects/slide_animation.cpp
++++ b/ui/effects/slide_animation.cpp
+@@ -29,10 +29,11 @@ void SlideAnimation::paintFrame(QPainter &p, int x, int y, int outerWidth) {
+ 
+ 	const auto pixelRatio = style::DevicePixelRatio();
+ 	const auto state = this->state();
+-	const auto leftCoord = _slideLeft
++	const auto reduced = Motion::CurrentMode() == Motion::Mode::Reduced;
++	const auto leftCoord = reduced ? 0 : _slideLeft
+ 		? anim::interpolate(-_leftSnapshotWidth, 0, state.leftProgress)
+ 		: anim::interpolate(0, -_leftSnapshotWidth, state.leftProgress);
+-	const auto rightCoord = _slideLeft
++	const auto rightCoord = reduced ? 0 : _slideLeft
+ 		? anim::interpolate(0, _rightSnapshotWidth, state.rightProgress)
+ 		: anim::interpolate(_rightSnapshotWidth, 0, state.rightProgress);
+ 
+@@ -73,8 +74,8 @@ void SlideAnimation::paintFrame(QPainter &p, int x, int y, int outerWidth) {
+ 
+ SlideAnimation::State SlideAnimation::state() const {
+ 	const auto dt = _animation.value(1.);
+-	const auto easeOut = anim::easeOutCirc(1., dt);
+-	const auto easeIn = anim::easeInCirc(1., dt);
++	const auto easeOut = Motion::Curve(Motion::Role::Panel, anim::easeOutCirc)(1., dt);
++	const auto easeIn = Motion::Curve(Motion::Role::Panel, anim::easeInCirc, true)(1., dt);
+ 	const auto arrivingAlpha = easeIn;
+ 	const auto departingAlpha = 1. - easeOut;
+ 
+diff --git a/ui/effects/slide_animation.h b/ui/effects/slide_animation.h
+index d0c4719..ec032c6 100644
+--- a/ui/effects/slide_animation.h
++++ b/ui/effects/slide_animation.h
+@@ -7,6 +7,7 @@
+ #pragma once
+ 
+ #include "ui/effects/animations.h"
++#include "ui/effects/motion.h"
+ 
+ namespace Ui {
+ 
+@@ -60,7 +61,8 @@ void SlideAnimation::start(
+ 	_leftSnapshotWidth = _leftSnapshot.width() / pixelRatio;
+ 	_leftSnapshotHeight = _leftSnapshot.height() / pixelRatio;
+ 	_rightSnapshotWidth = _rightSnapshot.width() / pixelRatio;
+-	_animation.start(std::forward<Lambda>(updateCallback), 0., 1., duration);
++	_animation.start(std::forward<Lambda>(updateCallback), 0., 1.,
++		Motion::Duration(Motion::Role::Panel, duration));
+ }
+ 
+ } // namespace Ui
 diff --git a/ui/integration.cpp b/ui/integration.cpp
-index 61fd017..aef8f2e 100644
+index 61fd017..a08d8dc 100644
 --- a/ui/integration.cpp
 +++ b/ui/integration.cpp
-@@ -24,6 +24,15 @@ bool Integration::processScrollWheel(QWidget*, QWheelEvent*) {
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/integration.h"
++#include "ui/effects/motion_model.h"
+ 
+ #include "ui/gl/gl_detection.h"
+ #include "ui/text/text_custom_emoji.h"
+@@ -14,6 +15,10 @@
+ #include "base/platform/base_platform_info.h"
+ 
+ namespace Ui {
++
++Motion::Mode Integration::motionMode() {
++	return Motion::Mode::Legacy;
++}
+ namespace {
+ 
+ Integration *IntegrationInstance = nullptr;
+@@ -24,6 +29,15 @@ bool Integration::processScrollWheel(QWidget*, QWheelEvent*) {
  	return false;
  }
  
@@ -385,7 +932,7 @@ index 61fd017..aef8f2e 100644
  	IntegrationInstance = instance;
  
 diff --git a/ui/integration.h b/ui/integration.h
-index d4e5f7a..d8fa2ba 100644
+index d4e5f7a..6971749 100644
 --- a/ui/integration.h
 +++ b/ui/integration.h
 @@ -17,6 +17,9 @@
@@ -398,10 +945,14 @@ index d4e5f7a..d8fa2ba 100644
  class QVariant;
  
  struct TextParseOptions;
-@@ -25,6 +28,17 @@ struct ClickContext;
+@@ -25,6 +28,21 @@ struct ClickContext;
  struct EntityLinkData;
  
  namespace Ui {
++
++namespace Motion {
++enum class Mode;
++} // namespace Motion
 +
 +enum class SurfaceRole {
 +	Menu,
@@ -416,10 +967,11 @@ index d4e5f7a..d8fa2ba 100644
  namespace Emoji {
  class One;
  } // namespace Emoji
-@@ -50,6 +64,12 @@ public:
+@@ -50,6 +68,13 @@ public:
  	[[nodiscard]] virtual QString angleBackendFilePath() = 0;
  
  	virtual bool processScrollWheel(QWidget *scroll, QWheelEvent *event);
++	[[nodiscard]] virtual Motion::Mode motionMode();
 +	virtual bool paintSurface(
 +		QPainter &p,
 +		const QRect &rect,
@@ -452,6 +1004,61 @@ index 7a9c2b7..ef62567 100644
  	if (!_additionalTitle.current().isEmpty()
  		&& clip.intersects(QRect(0, 0, width(), titleHeight()))) {
  		paintAdditionalTitle(p);
+diff --git a/ui/layers/layer_widget.cpp b/ui/layers/layer_widget.cpp
+index fdef0e6..7bbc5bb 100644
+--- a/ui/layers/layer_widget.cpp
++++ b/ui/layers/layer_widget.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/layers/layer_widget.h"
++#include "ui/effects/motion.h"
+ 
+ #include "ui/cached_special_layer_shadow_corners.h"
+ #include "ui/layers/box_layer_widget.h"
+@@ -178,8 +179,9 @@ void LayerStackWidget::BackgroundWidget::setMainMenuShown(bool shown) {
+ 			[this] { animationCallback(); },
+ 			_mainMenuShown ? 0. : 1.,
+ 			_mainMenuShown ? 1. : 0.,
+-			_duration,
+-			anim::easeOutCirc);
++			Motion::CurrentMode() == Motion::Mode::Reduced ? 0
++				: Motion::Duration(Motion::Role::Panel, _duration, !shown),
++			Motion::Curve(Motion::Role::Panel, anim::easeOutCirc, !shown));
+ 	}
+ 	_mainMenuCacheWidth = (_mainMenuCache.width() / style::DevicePixelRatio())
+ 		- st::boxRoundShadow.extend.right();
+@@ -195,7 +197,8 @@ void LayerStackWidget::BackgroundWidget::setSpecialLayerShown(bool shown) {
+ 			[this] { animationCallback(); },
+ 			_specialLayerShown ? 0. : 1.,
+ 			_specialLayerShown ? 1. : 0.,
+-			_duration);
++			Motion::Duration(Motion::Role::Popup, _duration, !shown),
++			Motion::Curve(Motion::Role::Popup, anim::linear, !shown));
+ 	}
+ 	checkWasShown(wasShown);
+ }
+@@ -208,7 +211,8 @@ void LayerStackWidget::BackgroundWidget::setLayerShown(bool shown) {
+ 			[this] { animationCallback(); },
+ 			_layerShown ? 0. : 1.,
+ 			_layerShown ? 1. : 0.,
+-			_duration);
++			Motion::Duration(Motion::Role::Popup, _duration, !shown),
++			Motion::Curve(Motion::Role::Popup, anim::linear, !shown));
+ 	}
+ 	checkWasShown(wasShown);
+ }
+@@ -219,8 +223,8 @@ void LayerStackWidget::BackgroundWidget::checkWasShown(bool wasShown) {
+ 			[this] { animationCallback(); },
+ 			wasShown ? 1. : 0.,
+ 			wasShown ? 0. : 1.,
+-			_duration,
+-			anim::easeOutCirc);
++			Motion::Duration(Motion::Role::Popup, _duration, wasShown),
++			Motion::Curve(Motion::Role::Popup, anim::easeOutCirc, wasShown));
+ 	}
+ }
+ 
 diff --git a/ui/layers/layers.style b/ui/layers/layers.style
 index ebb7796..0f38aea 100644
 --- a/ui/layers/layers.style
@@ -494,6 +1101,50 @@ index 0311cc3..6ae78d4 100644
  }
  
  void TitleWidget::resizeEvent(QResizeEvent *e) {
+diff --git a/ui/toast/toast.cpp b/ui/toast/toast.cpp
+index 3568470..e270af8 100644
+--- a/ui/toast/toast.cpp
++++ b/ui/toast/toast.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/toast/toast.h"
++#include "ui/effects/motion.h"
+ 
+ #include "ui/toast/toast_manager.h"
+ #include "ui/toast/toast_widget.h"
+@@ -32,7 +33,8 @@ Instance::Instance(
+ , _hideAt(config.infinite
+ 	? 0
+ 	: (crl::now() + (config.duration ? config.duration : kDefaultDuration)))
+-, _sliding(config.attach != RectPart::None)
++, _sliding(config.attach != RectPart::None
++	&& Motion::CurrentMode() != Motion::Mode::Reduced)
+ , _widget(
+ 	std::make_unique<internal::Widget>(
+ 		widgetParent,
+@@ -41,7 +43,9 @@ Instance::Instance(
+ 		[=] { shownAnimationCallback(); },
+ 		0.,
+ 		1.,
+-		_sliding ? _st->durationSlide : _st->durationFadeIn);
++		Motion::Duration(Motion::Role::Popup,
++			_sliding ? _st->durationSlide : _st->durationFadeIn),
++		Motion::Curve(Motion::Role::Popup));
+ }
+ 
+ void SetDefaultParent(not_null<QWidget*> parent) {
+@@ -110,7 +114,9 @@ void Instance::hideAnimated() {
+ 		[=] { shownAnimationCallback(); },
+ 		1.,
+ 		0.,
+-		_sliding ? _st->durationSlide : _st->durationFadeOut);
++		Motion::Duration(Motion::Role::Popup,
++			_sliding ? _st->durationSlide : _st->durationFadeOut, true),
++		Motion::Curve(Motion::Role::Popup, anim::linear, true));
+ }
+ 
+ void Instance::hide() {
 diff --git a/ui/toast/toast_widget.cpp b/ui/toast/toast_widget.cpp
 index 433b8f3..08ec450 100644
 --- a/ui/toast/toast_widget.cpp
@@ -518,7 +1169,7 @@ index 433b8f3..08ec450 100644
  	_roundRect.paint(p, rect());
  }
 diff --git a/ui/widgets/buttons.cpp b/ui/widgets/buttons.cpp
-index 690ba6f..495aebd 100644
+index 690ba6f..f0f0064 100644
 --- a/ui/widgets/buttons.cpp
 +++ b/ui/widgets/buttons.cpp
 @@ -5,6 +5,7 @@
@@ -529,20 +1180,341 @@ index 690ba6f..495aebd 100644
  
  #include "ui/effects/ripple_animation.h"
  #include "ui/effects/cross_animation.h"
-@@ -991,6 +992,14 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
+@@ -121,6 +122,14 @@ void LinkButton::onStateChanged(State was, StateChangeSource source) {
+ RippleButton::RippleButton(QWidget *parent, const style::RippleAnimation &st)
+ : AbstractButton(parent)
+ , _st(st) {
++	events() | rpl::on_next([=](not_null<QEvent*> event) {
++		if ((event->type() == QEvent::FocusIn || event->type() == QEvent::FocusOut)
++			&& Motion::Enabled() && !isDisabled()) {
++			if (!_motionHover) _motionHover = std::make_unique<Motion::Value>(this);
++			_motionHover->to(isOver() || hasFocus() ? 1. : 0., Motion::Role::Hover);
++			update();
++		}
++	}, lifetime());
+ }
+ 
+ void RippleButton::clearState() {
+@@ -129,6 +138,8 @@ void RippleButton::clearState() {
+ }
+ 
+ void RippleButton::finishAnimating() {
++	if (_motionHover) _motionHover->finish();
++	if (_motionPress) _motionPress->finish();
+ 	if (_ripple) {
+ 		_ripple.reset();
+ 		update();
+@@ -184,6 +195,15 @@ void RippleButton::paintRipple(QPainter &p, int x, int y, const QColor *colorOve
+ 
+ void RippleButton::onStateChanged(State was, StateChangeSource source) {
+ 	update();
++	if (Motion::Enabled() && !isDisabled()) {
++		if (!_motionHover) _motionHover = std::make_unique<Motion::Value>(this);
++		if (!_motionPress) _motionPress = std::make_unique<Motion::Value>(this);
++		_motionHover->to(isOver() || hasFocus() ? 1. : 0., Motion::Role::Hover);
++		_motionPress->to(isDown() ? 1. : 0., Motion::Role::Press);
++	} else {
++		_motionHover.reset();
++		_motionPress.reset();
++	}
+ 
+ 	auto wasDown = static_cast<bool>(was & StateFlag::Down);
+ 	auto down = isDown();
+@@ -204,6 +224,24 @@ void RippleButton::onStateChanged(State was, StateChangeSource source) {
+ 	}
+ }
+ 
++void RippleButton::paintMotion(QPainter &p, QRectF area, double radius) {
++	if (isDisabled()) {
++		return;
++	}
++	Motion::PaintFeedback(p, area, radius, st::windowActiveTextFg->c,
++		motionHover(), motionPress());
++}
++
++double RippleButton::motionPress() const {
++	return Motion::Enabled() && _motionPress
++		? std::clamp(_motionPress->value(), 0., 1.) : 0.;
++}
++
++double RippleButton::motionHover() const {
++	return Motion::Enabled() && _motionHover
++		? std::clamp(_motionHover->value(), 0., 1.) : 0.;
++}
++
+ void RippleButton::ensureRipple() {
+ 	if (!_ripple) {
+ 		_ripple = std::make_unique<RippleAnimation>(_st, prepareRippleMask(), [this] { update(); });
+@@ -477,6 +515,10 @@ int RoundButton::contentWidth() const {
+ 
+ void RoundButton::paintEvent(QPaintEvent *e) {
+ 	Painter p(this);
++	const auto compression = 1. - 0.035 * motionPress();
++	p.translate(rect().center());
++	p.scale(compression, compression);
++	p.translate(-rect().center());
+ 
+ 	auto innerWidth = contentWidth();
+ 	auto rounded = rect().marginsRemoved(_st.padding);
+@@ -519,9 +561,16 @@ void RoundButton::paintEvent(QPaintEvent *e) {
+ 
+ 	auto over = isOver();
+ 	auto down = isDown();
+-	if (!_brushOverride && (over || down)) {
++	const auto overLevel = Motion::Enabled()
++		? std::max(motionHover(), motionPress()) : (over || down) ? 1. : 0.;
++	if (!_brushOverride && overLevel > 0.) {
++		p.save();
++		p.setOpacity(p.opacity() * overLevel);
+ 		drawRect(_roundRectOver);
++		p.restore();
+ 	}
++	paintMotion(p, rounded, _fullRadius ? rounded.height() / 2.
++		: _st.radius ? _st.radius : st::buttonRadius);
+ 
+ 	if (!_penOverride || _rippleOverride) {
+ 		paintRipple(
+@@ -642,11 +691,18 @@ void IconButton::setRippleColorOverride(const style::color *colorOverride) {
+ float64 IconButton::iconOverOpacity() const {
+ 	return (isDown() || forceRippled())
+ 		? 1.
+-		: _a_over.value(isOver() ? 1. : 0.);
++		: Motion::Enabled() ? motionHover() : _a_over.value(isOver() ? 1. : 0.);
+ }
+ 
+ void IconButton::paintEvent(QPaintEvent *e) {
+ 	Painter p(this);
++	const auto compression = 1. - 0.045 * motionPress();
++	p.translate(rect().center());
++	p.scale(compression, compression);
++	p.translate(-rect().center());
++	const auto area = QRectF(_st.rippleAreaPosition,
++		QSizeF(_st.rippleAreaSize, _st.rippleAreaSize));
++	paintMotion(p, area, _st.rippleAreaSize / 2.);
+ 
+ 	paintRipple(p, _st.rippleAreaPosition, _rippleColorOverride ? &(*_rippleColorOverride)->c : nullptr);
+ 
+@@ -695,6 +751,10 @@ void IconButton::paintEvent(QPaintEvent *e) {
+ 
+ void IconButton::onStateChanged(State was, StateChangeSource source) {
+ 	RippleButton::onStateChanged(was, source);
++	if (Motion::Enabled()) {
++		_a_over.stop();
++		return;
++	}
+ 
+ 	auto over = isOver();
+ 	auto wasOver = static_cast<bool>(was & StateFlag::Over);
+@@ -702,7 +762,9 @@ void IconButton::onStateChanged(State was, StateChangeSource source) {
+ 		if (_st.duration) {
+ 			auto from = over ? 0. : 1.;
+ 			auto to = over ? 1. : 0.;
+-			_a_over.start([this] { update(); }, from, to, _st.duration);
++			_a_over.start([this] { update(); }, from, to,
++				Motion::Duration(Motion::Role::Hover, _st.duration),
++				Motion::Curve(Motion::Role::Hover));
+ 		} else {
+ 			update();
+ 		}
+@@ -979,6 +1041,7 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
+ 
+ 	const auto paintOver = (isOver() || isDown()) && !isDisabled();
+ 	paintBg(p, e->rect(), paintOver);
++	paintMotion(p, rect(), st::buttonRadius);
+ 
+ 	paintRipple(p, 0, 0);
+ 
+@@ -991,7 +1054,18 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
  }
  
  void SettingsButton::paintBg(Painter &p, const QRect &rect, bool over) const {
+-	p.fillRect(rect, over ? _st.textBgOver : _st.textBg);
++	const auto tint = Motion::Enabled()
++		? anim::color(_st.textBg, _st.textBgOver, motionHover())
++		: (over ? _st.textBgOver : _st.textBg)->c;
 +	if (Integration::Exists() && Integration::Instance().paintSurface(
 +			p,
 +			this->rect(),
-+			(over ? _st.textBgOver : _st.textBg)->c,
++			tint,
 +			st::buttonRadius,
 +			SurfaceRole::Settings)) {
 +		return;
 +	}
- 	p.fillRect(rect, over ? _st.textBgOver : _st.textBg);
++	p.fillRect(rect, tint);
  }
+ 
+ void SettingsButton::paintText(Painter &p, bool over, int outerw) const {
+diff --git a/ui/widgets/buttons.h b/ui/widgets/buttons.h
+index 0801610..fa57d97 100644
+--- a/ui/widgets/buttons.h
++++ b/ui/widgets/buttons.h
+@@ -9,6 +9,7 @@
+ #include "ui/abstract_button.h"
+ #include "ui/round_rect.h"
+ #include "ui/effects/animations.h"
++#include "ui/effects/motion.h"
+ #include "ui/text/text.h"
+ #include "styles/style_widgets.h"
+ 
+@@ -94,12 +95,17 @@ protected:
+ 
+ 	virtual QImage prepareRippleMask() const;
+ 	virtual QPoint prepareRippleStartPosition() const;
++	void paintMotion(QPainter &p, QRectF area, double radius);
++	[[nodiscard]] double motionPress() const;
++	[[nodiscard]] double motionHover() const;
+ 
+ private:
+ 	void ensureRipple();
+ 
+ 	const style::RippleAnimation &_st;
+ 	std::unique_ptr<RippleAnimation> _ripple;
++	std::unique_ptr<Motion::Value> _motionHover;
++	std::unique_ptr<Motion::Value> _motionPress;
+ 	bool _forceRippled = false;
+ 	rpl::lifetime _forceRippledSubscription;
+ 
+diff --git a/ui/widgets/checkbox.cpp b/ui/widgets/checkbox.cpp
+index df0dc58..dec8e5b 100644
+--- a/ui/widgets/checkbox.cpp
++++ b/ui/widgets/checkbox.cpp
+@@ -37,7 +37,8 @@ void AbstractCheckView::setChecked(bool checked, anim::type animated) {
+ 			[=] { if (_updateCallback) _updateCallback(); },
+ 			_checked ? 0. : 1.,
+ 			_checked ? 1. : 0.,
+-			_duration);
++			Motion::Duration(Motion::Role::State, _duration),
++			Motion::Curve(Motion::Role::State));
+ 	}
+ 	checkedChangedHook(animated);
+ 	if (changed) {
+diff --git a/ui/widgets/fields/input_field.cpp b/ui/widgets/fields/input_field.cpp
+index d57ac56..c1fc8ac 100644
+--- a/ui/widgets/fields/input_field.cpp
++++ b/ui/widgets/fields/input_field.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/fields/input_field.h"
++#include "ui/effects/motion.h"
+ 
+ #include "base/platform/base_platform_info.h"
+ #include "base/qt_signal_producer.h"
+@@ -2850,6 +2851,19 @@ bool InputField::heightAutoupdated() {
+ 		+ _additionalMargins.top()
+ 		+ _additionalMargins.bottom();
+ 	const auto newHeight = std::clamp(contentHeight, _minHeight, _maxHeight);
++	if (_animateHeight && Motion::Enabled() && isVisible() && !_widthResizing
++		&& height() >= _minHeight && height() <= _maxHeight
++		&& height() != newHeight) {
++		if (!_heightAnimation) {
++			_heightAnimation = std::make_unique<Motion::Value>(this, height(),
++				[=] { updateAnimatedHeight(); });
++		}
++		_heightTarget = newHeight;
++		_heightAnimation->to(newHeight);
++		return false;
++	}
++	if (_heightAnimation) _heightAnimation->reset(newHeight);
++	_heightTarget = newHeight;
+ 	if (height() != newHeight) {
+ 		resize(width(), newHeight);
+ 		return true;
+@@ -2863,6 +2877,29 @@ void InputField::checkContentHeight() {
+ 	}
+ }
+ 
++void InputField::setHeightAnimated(bool enabled) {
++	_animateHeight = enabled;
++	checkContentHeight();
++}
++
++void InputField::updateAnimatedHeight() {
++	const auto target = Motion::Enabled() && isVisible() && _heightAnimation
++		? std::clamp(int(std::lround(_heightAnimation->value())), _minHeight, _maxHeight)
++		: _heightTarget;
++	if (!Motion::Enabled() || !isVisible()) {
++		if (_heightAnimation) _heightAnimation->finish();
++	}
++	if (target == height()) {
++		return;
++	}
++	const auto weak = base::make_weak(this);
++	resize(width(), target);
++	if (weak) {
++		if (_focused) _inner->ensureCursorVisible();
++		_heightChanges.fire({});
++	}
++}
++
+ void InputField::paintSurrounding(
+ 		QPainter &p,
+ 		QRect clip,
+@@ -3296,7 +3333,9 @@ void InputField::focusOutEventInner(QFocusEvent *e) {
+ void InputField::setFocused(bool focused) {
+ 	if (_focused != focused) {
+ 		_focused = focused;
+-		_a_focused.start([this] { update(); }, _focused ? 0. : 1., _focused ? 1. : 0., _st.duration);
++		_a_focused.start([this] { update(); }, _focused ? 0. : 1., _focused ? 1. : 0.,
++			Motion::Duration(Motion::Role::Hover, _st.duration),
++			Motion::Curve(Motion::Role::Hover));
+ 		startPlaceholderAnimation();
+ 		startBorderAnimation();
+ 	}
+@@ -6297,6 +6336,12 @@ void InputField::insertFromMimeDataInner(const QMimeData *source) {
+ }
+ 
+ void InputField::resizeEvent(QResizeEvent *e) {
++	const auto widthChanged = e->size().width() != e->oldSize().width();
++	if (widthChanged && _heightAnimation) {
++		_heightAnimation->reset(height());
++	}
++	const auto wasResizing = std::exchange(_widthResizing, widthChanged);
++	const auto resizeGuard = gsl::finally([&] { _widthResizing = wasResizing; });
+ 	refreshPlaceholder(_placeholderFull.current());
+ 	_inner->setGeometry(rect().marginsRemoved(
+ 		_st.textMargins + _additionalMargins + _customFontMargins));
+diff --git a/ui/widgets/fields/input_field.h b/ui/widgets/fields/input_field.h
+index 24f98a3..bf3df90 100644
+--- a/ui/widgets/fields/input_field.h
++++ b/ui/widgets/fields/input_field.h
+@@ -31,6 +31,10 @@ namespace Ui::Text {
+ struct QuotePaintCache;
+ } // namespace Ui::Text
+ 
++namespace Ui::Motion {
++class Value;
++} // namespace Ui::Motion
++
+ namespace style {
+ struct InputField;
+ } // namespace style
+@@ -219,6 +223,7 @@ public:
+ 
+ 	void setMaxLength(int maxLength);
+ 	void setMinHeight(int minHeight);
++	void setHeightAnimated(bool enabled);
+ 	void setMaxHeight(int maxHeight);
+ 	void setMode(Mode mode);
+ 
+@@ -483,6 +488,7 @@ private:
+ 
+ 	bool heightAutoupdated();
+ 	void checkContentHeight();
++	void updateAnimatedHeight();
+ 	void setErrorShown(bool error);
+ 
+ 	void focusInEventInner(QFocusEvent *e);
+@@ -691,6 +697,10 @@ private:
+ 	bool _performingUndoRedo = false;
+ 	bool _insertedTagsDelayClear = false;
+ 	bool _inHeightCheck = false;
++	bool _animateHeight = false;
++	bool _widthResizing = false;
++	int _heightTarget = -1;
++	std::unique_ptr<Motion::Value> _heightAnimation;
+ 
+ 	bool _customUpDown = false;
  
 diff --git a/ui/widgets/menu/menu.cpp b/ui/widgets/menu/menu.cpp
 index 5421134..b2567cc 100644
@@ -571,7 +1543,7 @@ index 5421134..b2567cc 100644
  
  	positionValue(
 diff --git a/ui/widgets/menu/menu_action.cpp b/ui/widgets/menu/menu_action.cpp
-index 4c16b67..e194469 100644
+index 4c16b67..62abb60 100644
 --- a/ui/widgets/menu/menu_action.cpp
 +++ b/ui/widgets/menu/menu_action.cpp
 @@ -5,6 +5,7 @@
@@ -582,14 +1554,18 @@ index 4c16b67..e194469 100644
  
  #include "ui/effects/ripple_animation.h"
  #include "ui/painter.h"
-@@ -96,6 +97,14 @@ void Action::paintEvent(QPaintEvent *e) {
+@@ -96,6 +97,18 @@ void Action::paintEvent(QPaintEvent *e) {
  }
  
  void Action::paintBackground(QPainter &p, bool selected) {
++	_selection.to(selected ? 1. : 0., Motion::Role::Hover);
++	auto tint = _st.itemBgOver->c;
++	tint.setAlphaF(tint.alphaF() * std::clamp(_selection.value(), 0., 1.));
 +	if (Integration::Exists() && Integration::Instance().paintSurface(
 +			p,
 +			QRect(0, 0, width(), _height),
-+			selected ? _st.itemBgOver->c : QColor(Qt::transparent),
++			Motion::Enabled() ? tint
++				: selected ? _st.itemBgOver->c : QColor(Qt::transparent),
 +			st::buttonRadius,
 +			SurfaceRole::MenuItem)) {
 +		return;
@@ -597,8 +1573,60 @@ index 4c16b67..e194469 100644
  	if (selected && _st.itemBgOver->c.alpha() < 255) {
  		p.fillRect(0, 0, width(), _height, _st.itemBg);
  	}
+@@ -117,6 +130,7 @@ void Action::paint(Painter &p) {
+ 	const auto enabled = isEnabled();
+ 	const auto selected = isSelected();
+ 	paintBackground(p, selected);
++	paintMotion(p, rect(), st::buttonRadius);
+ 	if (enabled) {
+ 		RippleButton::paintRipple(p, 0, 0);
+ 	}
+diff --git a/ui/widgets/menu/menu_action.h b/ui/widgets/menu/menu_action.h
+index 2a2e689..b391d35 100644
+--- a/ui/widgets/menu/menu_action.h
++++ b/ui/widgets/menu/menu_action.h
+@@ -74,6 +74,7 @@ private:
+ //	std::unique_ptr<ToggleView> _toggle;
+ 	int _textWidth = 0;
+ 	const int _height;
++	Motion::Value _selection{ this };
+ 
+ };
+ 
+diff --git a/ui/widgets/popup_menu.cpp b/ui/widgets/popup_menu.cpp
+index 2236ca1..7c76278 100644
+--- a/ui/widgets/popup_menu.cpp
++++ b/ui/widgets/popup_menu.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/popup_menu.h"
++#include "ui/effects/motion.h"
+ 
+ #include "base/platform/base_platform_info.h"
+ #include "base/invoke_queued.h"
+@@ -804,7 +805,8 @@ void PopupMenu::startOpacityAnimation(bool hiding) {
+ 		[=] { opacityAnimationCallback(); },
+ 		_hiding ? 1. : 0.,
+ 		_hiding ? 0. : 1.,
+-		_st.duration);
++		Motion::Duration(Motion::Role::Popup, _st.duration, hiding),
++		Motion::Curve(Motion::Role::Popup, anim::linear, hiding));
+ }
+ 
+ void PopupMenu::showStarted() {
+@@ -846,7 +848,8 @@ void PopupMenu::startShowAnimation() {
+ 	}
+ 	_animatePhase = AnimatePhase::StartShow;
+ 	hideChildren();
+-	_a_show.start([this] { showAnimationCallback(); }, 0., 1., _st.showDuration);
++	_a_show.start([this] { showAnimationCallback(); }, 0., 1.,
++		Motion::Duration(Motion::Role::Popup, _st.showDuration));
+ 	fireCurrentShowState();
+ }
+ 
 diff --git a/ui/widgets/side_bar_button.cpp b/ui/widgets/side_bar_button.cpp
-index 7633972..43a64bc 100644
+index 7633972..ab13346 100644
 --- a/ui/widgets/side_bar_button.cpp
 +++ b/ui/widgets/side_bar_button.cpp
 @@ -5,6 +5,7 @@
@@ -609,18 +1637,97 @@ index 7633972..43a64bc 100644
  
  #include "ui/effects/ripple_animation.h"
  #include "ui/painter.h"
-@@ -167,7 +168,10 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
+@@ -53,6 +54,7 @@ void SideBarButton::setActive(bool active) {
+ 		return;
+ 	}
+ 	_active = active;
++	_selection.to(active ? 1. : 0.);
+ 	if (isPageTab()) {
+ 		// Announce selection via a dedicated selection event (the Windows
+ 		// bridge maps these to UIA_SelectionItem_ElementSelected); a generic
+@@ -83,6 +85,10 @@ void SideBarButton::setBadge(const QString &badge, bool muted) {
+ 		return;
+ 	}
+ 	_badge.setText(_st.badgeStyle, badge);
++	if (Motion::Enabled() && isVisible() && !_badgeReveal.animating()) {
++		_badgeReveal.reset(0.);
++		_badgeReveal.to(1., Motion::Role::Badge);
++	}
+ 	_badgeMuted = muted;
+ 	const auto width = badge.isEmpty()
+ 		? 0
+@@ -166,8 +172,15 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
+ 	auto p = Painter(this);
  	const auto clip = e->rect();
  
- 	const auto &bg = _active ? _st.textBgActive : _st.textBg;
+-	const auto &bg = _active ? _st.textBgActive : _st.textBg;
 -	p.fillRect(clip, bg);
++	const auto bg = Motion::Enabled()
++		? anim::color(_st.textBg, _st.textBgActive,
++			std::clamp(_selection.value(), 0., 1.))
++		: (_active ? _st.textBgActive : _st.textBg)->c;
 +	if (!Integration::Exists() || !Integration::Instance().paintSurface(
-+			p, rect(), bg->c, st::buttonRadius, SurfaceRole::Navigation)) {
++			p, rect(), bg, st::buttonRadius, SurfaceRole::Navigation)) {
 +		p.fillRect(clip, bg);
 +	}
++	paintMotion(p, rect(), st::buttonRadius);
  
  	RippleButton::paintRipple(p, 0, 0);
  
+@@ -198,6 +211,9 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
+ 	}
+ 
+ 	if (_iconCacheBadgeWidth) {
++		p.save();
++		const auto reveal = std::clamp(_badgeReveal.value(), 0., 1.);
++		p.setOpacity(p.opacity() * (0.6 + 0.4 * reveal));
+ 		const auto desiredLeft = width() / 2 + _st.badgePosition.x();
+ 		const auto x = std::min(
+ 			desiredLeft,
+@@ -218,6 +234,7 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
+ 			x + (_iconCacheBadgeWidth - _badge.maxWidth()) / 2,
+ 			y + (_st.badgeHeight - _st.badgeStyle.font->height) / 2,
+ 			width());
++		p.restore();
+ 	}
+ 
+ 	if (_lock.locked) {
+diff --git a/ui/widgets/side_bar_button.h b/ui/widgets/side_bar_button.h
+index 5e9e3dc..685dfa1 100644
+--- a/ui/widgets/side_bar_button.h
++++ b/ui/widgets/side_bar_button.h
+@@ -69,6 +69,8 @@ private:
+ 	bool _badgeMuted = false;
+ 	bool _showIcon = true;
+ 	bool _showText = true;
++	Motion::Value _selection{ this };
++	Motion::Value _badgeReveal{ this, 1. };
+ 
+ 	Fn<bool()> _paused;
+ 	Text::MarkedContext _context;
+diff --git a/ui/widgets/tooltip.cpp b/ui/widgets/tooltip.cpp
+index 34c0909..bd1c99b 100644
+--- a/ui/widgets/tooltip.cpp
++++ b/ui/widgets/tooltip.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/tooltip.h"
++#include "ui/effects/motion.h"
+ 
+ #include "ui/integration.h"
+ #include "ui/ui_utility.h"
+@@ -321,7 +322,9 @@ void ImportantTooltip::toggleAnimated(bool visible) {
+ 			return;
+ 		}
+ 		hideChildren();
+-		_visibleAnimation.start([this] { animationCallback(); }, _visible ? 0. : 1., _visible ? 1. : 0., _st.duration, anim::easeOutCirc);
++		_visibleAnimation.start([this] { animationCallback(); }, _visible ? 0. : 1., _visible ? 1. : 0.,
++			Motion::Duration(Motion::Role::Popup, _st.duration, !_visible),
++			Motion::Curve(Motion::Role::Popup, anim::easeOutCirc, !_visible));
+ 	} else if (visible && isHidden()) {
+ 		show();
+ 	}
 diff --git a/ui/widgets/widgets.style b/ui/widgets/widgets.style
 index 8b8df7d..37dd8e3 100644
 --- a/ui/widgets/widgets.style
@@ -761,3 +1868,36 @@ index 8b8df7d..37dd8e3 100644
  	};
  }
  
+diff --git a/ui/wrap/slide_wrap.cpp b/ui/wrap/slide_wrap.cpp
+index 0c868a8..38d78e7 100644
+--- a/ui/wrap/slide_wrap.cpp
++++ b/ui/wrap/slide_wrap.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/wrap/slide_wrap.h"
++#include "ui/effects/motion.h"
+ 
+ #include "ui/ui_utility.h"
+ #include "styles/style_basic.h"
+@@ -55,7 +56,8 @@ SlideWrap<RpWidget> *SlideWrap<RpWidget>::setDirectionUp(bool up) {
+ SlideWrap<RpWidget> *SlideWrap<RpWidget>::toggle(
+ 		bool shown,
+ 		anim::type animated) {
+-	auto animate = (animated == anim::type::normal) && _duration;
++	auto animate = (animated == anim::type::normal) && _duration
++		&& Motion::CurrentMode() != Motion::Mode::Reduced;
+ 	auto changed = (_toggled != shown);
+ 	if (changed) {
+ 		_toggled = shown;
+@@ -64,8 +66,8 @@ SlideWrap<RpWidget> *SlideWrap<RpWidget>::toggle(
+ 				[this] { animationStep(); },
+ 				_toggled ? 0. : 1.,
+ 				_toggled ? 1. : 0.,
+-				_duration,
+-				anim::linear);
++				Motion::Duration(Motion::Role::State, _duration, !_toggled),
++				Motion::Curve(Motion::Role::State));
+ 			if (_finishedCallback) {
+ 				_animation.setFinishedCallback(_finishedCallback);
+ 			}

@@ -677,6 +677,8 @@ private:
 
 	mutable bool _lastInSelectionMode = false;
 	mutable Ui::Animations::Simple _inSelectionModeAnimation;
+	base::flat_map<FullMsgId, crl::time> _messageEntrances;
+	Ui::Animations::Basic _messageEntranceClock;
 
 	// scroll by touch support (at least Windows Surface tablets)
 	bool _touchScroll = false;

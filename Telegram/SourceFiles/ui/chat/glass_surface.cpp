@@ -9,6 +9,8 @@
 #include "mainwidget.h"
 #include "ui/rp_widget.h"
 #include "ui/abstract_button.h"
+#include "ui/widgets/buttons.h"
+#include "ui/effects/motion.h"
 #include "ui/widgets/elastic_scroll.h"
 #include "ui/effects/animations.h"
 #include "base/invoke_queued.h"
@@ -24,9 +26,6 @@ namespace Ui::Glass {
 namespace {
 
 rpl::event_stream<bool> EnabledChanges;
-
-constexpr auto kHoverDuration = crl::time(140);
-constexpr auto kPressDuration = crl::time(90);
 
 class ChatPreparation final : public QObject {
 public:
@@ -57,10 +56,10 @@ QWidget *ChatSource(QWidget *target) {
 }
 
 struct ButtonFeedback {
-	Ui::Animations::Simple hover;
-	Ui::Animations::Simple press;
-	bool over = false;
-	bool down = false;
+	explicit ButtonFeedback(AbstractButton *button) : hover(button), press(button) {
+	}
+	Motion::Value hover;
+	Motion::Value press;
 };
 
 class Backdrop final : public QObject {
@@ -283,10 +282,13 @@ QRect ButtonRect(QRect rect) {
 }
 
 void BindButtonFeedback(not_null<AbstractButton*> button) {
-	const auto state = button->lifetime().make_state<ButtonFeedback>();
+	if (dynamic_cast<IconButton*>(button.get())) {
+		return;
+	}
+	const auto state = button->lifetime().make_state<ButtonFeedback>(button.get());
 	const auto reset = [=] {
-		state->hover.stop();
-		state->press.stop();
+		state->hover.reset(0.);
+		state->press.reset(0.);
 		button->update();
 	};
 	rpl::merge(
@@ -295,7 +297,6 @@ void BindButtonFeedback(not_null<AbstractButton*> button) {
 	) | rpl::on_next(reset, button->lifetime());
 	button->events() | rpl::on_next([=](not_null<QEvent*> event) {
 		if (event->type() == QEvent::Hide) {
-			state->over = state->down = false;
 			reset();
 		} else if (event->type() == QEvent::FocusIn
 			|| event->type() == QEvent::FocusOut) {
@@ -304,29 +305,16 @@ void BindButtonFeedback(not_null<AbstractButton*> button) {
 	}, button->lifetime());
 	button->paintRequest() | rpl::on_next([=] {
 		if (!Enabled() || !button->isEnabled() || button->isDisabled()) {
-			state->hover.stop();
-			state->press.stop();
-			state->over = state->down = false;
+			state->hover.reset(0.);
+			state->press.reset(0.);
 			return;
 		}
-		const auto animate = [&](Ui::Animations::Simple &animation,
-				bool &previous, bool next, crl::time duration) {
-			if (anim::Disabled() || PowerSaving::On(PowerSaving::kAnimations)) {
-				animation.stop();
-			} else if (previous != next) {
-				animation.start([=] { button->update(); },
-					animation.value(previous ? 1. : 0.), next ? 1. : 0.,
-					duration, anim::easeOutCubic);
-			}
-			previous = next;
-		};
-		animate(state->hover, state->over, (button->isOver() || button->hasFocus()), kHoverDuration);
-		animate(state->press, state->down, button->isDown(), kPressDuration);
+		state->hover.to(button->isOver() || button->hasFocus() ? 1. : 0., Motion::Role::Hover);
+		state->press.to(button->isDown() ? 1. : 0., Motion::Role::Press);
 		auto p = QPainter(button);
 		const auto area = ButtonRect(button->rect());
-		PaintButtonFeedback(p, area, st::windowActiveTextFg->c,
-			state->hover.value(state->over ? 1. : 0.),
-			state->press.value(state->down ? 1. : 0.));
+		Motion::PaintFeedback(p, area, area.height() / 2., st::windowActiveTextFg->c,
+			state->hover.value(), state->press.value());
 	}, button->lifetime());
 }
 
