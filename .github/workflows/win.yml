@@ -6,6 +6,7 @@ on:
     branches-ignore:
       - public-canary
       - private-canary
+      - feature/aurora-glass
       - feature/liquid-glass-ui
     paths-ignore:
       - 'docs/**'
@@ -26,6 +27,8 @@ on:
       - 'Telegram/configure.sh'
       - 'Telegram/Telegram.plist'
   pull_request:
+    branches-ignore:
+      - feature/liquid-glass-ui
     paths-ignore:
       - 'docs/**'
       - '**.md'
