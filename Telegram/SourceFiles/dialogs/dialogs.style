@@ -128,29 +128,29 @@ taggedForumDialogRow: DialogRow(forumDialogRow) {
 	tagTop: 83px;
 }
 communityInfoDialogRow: DialogRow(defaultDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoTaggedDialogRow: DialogRow(taggedDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoForumDialogRow: DialogRow(forumDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoTaggedForumDialogRow: DialogRow(taggedForumDialogRow) {
-	padding: margins(22px, 8px, 18px, 8px);
+	padding: margins(22px, 12px, 18px, 12px);
 	nameLeft: 80px;
 	textLeft: 80px;
 }
 communityInfoRequestableListItem: PeerListItem(communityRequestableListItem) {
-	photoPosition: point(22px, 8px);     // == st::communityInfoDialogRow.padding left/top (22,8)
-	namePosition: point(80px, 10px);     // == st::communityInfoDialogRow.nameLeft / nameTop
-	statusPosition: point(80px, 34px);   // == st::communityInfoDialogRow.textLeft / textTop
+	photoPosition: point(22px, 12px);
+	namePosition: point(80px, 12px);     // == st::communityInfoDialogRow.nameLeft / nameTop
+	statusPosition: point(80px, 38px);   // == st::communityInfoDialogRow.textLeft / textTop
 }
 communityInfoRequestableList: PeerList(defaultPeerList) {
 	item: communityInfoRequestableListItem;
@@ -164,10 +164,10 @@ dialogRowOpenBot: DialogRightButton {
 		height: 20px;
 		textTop: 1px;
 	}
-	margin: margins(0px, 32px, 10px, 0px);
+	margin: margins(0px, 36px, 10px, 0px);
 }
 dialogRowOpenBotRecent: DialogRightButton(dialogRowOpenBot) {
-	margin: margins(0px, 32px, 16px, 0px);
+	margin: margins(0px, 36px, 16px, 0px);
 }
 dialogsTopBarRightButton: RoundButton(defaultActiveButton) {
 	width: -16px;
