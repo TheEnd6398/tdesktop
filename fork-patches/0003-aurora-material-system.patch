@@ -1,0 +1,763 @@
+diff --git a/ui/colors.palette b/ui/colors.palette
+index e2ba0d6..1a0b717 100644
+--- a/ui/colors.palette
++++ b/ui/colors.palette
+@@ -6,22 +6,22 @@
+ //
+ 
+ // basic
+-windowBg: #ffffff; // white: fallback for background
+-windowFg: #000000; // black: fallback for text
+-windowBgOver: #f1f1f1; // light gray: fallback for background with mouse over
+-windowBgRipple: #e5e5e5; // darker gray: fallback for ripple effect
++windowBg: #f8f9fc; // white: fallback for background
++windowFg: #202837; // black: fallback for text
++windowBgOver: #e9edf4; // light gray: fallback for background with mouse over
++windowBgRipple: #dfe6f0; // darker gray: fallback for ripple effect
+ windowFgOver: windowFg; // black: fallback for text with mouse over
+-windowSubTextFg: #999999; // gray: fallback for additional text
+-windowSubTextFgOver: #919191; // darker gray: fallback for additional text with mouse over
+-windowBoldFg: #222222; // dark gray: fallback for bold text
+-windowBoldFgOver: #222222; // dark gray: fallback for bold text with mouse over
+-windowBgActive: #40a7e3; // bright blue: fallback for blue filled active areas
++windowSubTextFg: #627086; // gray: fallback for additional text
++windowSubTextFgOver: #566379; // darker gray: fallback for additional text with mouse over
++windowBoldFg: #182132; // dark gray: fallback for bold text
++windowBoldFgOver: #182132; // dark gray: fallback for bold text with mouse over
++windowBgActive: #287da4; // bright blue: fallback for blue filled active areas
+ windowFgActive: #ffffff; // white: fallback for text on active areas
+-windowActiveTextFg: #168acd; // online blue: fallback for active text like online status
++windowActiveTextFg: #246e98; // online blue: fallback for active text like online status
+ windowShadowFg: #000000; // black: fallback for shadow
+-windowShadowFgFallback: #f1f1f1; // gray: fallback for shadow without opacity
++windowShadowFgFallback: #e1e6ef; // gray: fallback for shadow without opacity
+ 
+-shadowFg: #00000018; // most shadows (including opacity)
++shadowFg: #192b4920; // most shadows (including opacity)
+ slideFadeOutBg: #0000003c; // slide animation (chat to profile) fade out filling
+ slideFadeOutShadowFg: windowShadowFg; // slide animation (chat to profile) fade out right section shadow
+ 
+@@ -30,18 +30,18 @@ imageBgTransparent: #ffffff; // image background when displaying an image with o
+ 
+ // widgets
+ activeButtonBg: windowBgActive; // default active button background
+-activeButtonBgOver: #39a5db; // default active button background with mouse over
+-activeButtonBgRipple: #2095d0; // default active button ripple effect
++activeButtonBgOver: #226d92; // default active button background with mouse over
++activeButtonBgRipple: #1c6084; // default active button ripple effect
+ activeButtonFg: windowFgActive; // default active button text
+ activeButtonFgOver: activeButtonFg; // default active button text with mouse over
+ activeButtonSecondaryFg: #cceeff; // default active button additional text (selected messages counter in forward / delete buttons)
+ activeButtonSecondaryFgOver: activeButtonSecondaryFg; // default active button additional text with mouse over
+-activeLineFg: #37a1de; // default active line (like code input field bottom border when you log in and field is focused)
++activeLineFg: #287da4; // default active line (like code input field bottom border when you log in and field is focused)
+ activeLineFgError: #e48383; // default active line for error state (like code input field bottom border when you log in and you've entered incorrect code)
+ 
+ lightButtonBg: windowBg; // default light button background (like buttons in boxes)
+-lightButtonBgOver: #e3f1fa; // default light button background with mouse over
+-lightButtonBgRipple: #c9e4f6; // default light button ripple effect
++lightButtonBgOver: #e3edf5; // default light button background with mouse over
++lightButtonBgRipple: #d2e3f0; // default light button ripple effect
+ lightButtonFg: windowActiveTextFg; // default light button text
+ lightButtonFgOver: lightButtonFg; // default light button text with mouse over
+ 
+@@ -50,19 +50,19 @@ attentionButtonFgOver: #d14e4e; // default attention button text with mouse over
+ attentionButtonBgOver: #fcdfde; // default attention button background with mouse over
+ attentionButtonBgRipple: #f4c3c2; // default attention button ripple effect
+ 
+-menuBg: windowBg; // default popup menu background
++menuBg: #f8f9fc; // default popup menu background
+ menuBgOver: windowBgOver; // default popup menu item background with mouse over
+ menuBgRipple: windowBgRipple; // default popup menu item ripple effect
+-menuIconFg: #999999; // default popup menu item icon (like main menu)
+-menuIconFgOver: #8a8a8a; // default popup menu item icon with mouse over
+-menuSubmenuArrowFg: #373737; // default popup menu submenu arrow icon (like in message field context menu in case of RTL system language)
++menuIconFg: #6b778b; // default popup menu item icon (like main menu)
++menuIconFgOver: #246e98; // default popup menu item icon with mouse over
++menuSubmenuArrowFg: #566379; // default popup menu submenu arrow icon (like in message field context menu in case of RTL system language)
+ menuFgDisabled: #cccccc; // default popup menu item disabled text (like unavailable items in message field context menu)
+-menuSeparatorFg: #f1f1f1; // default popup menu separator (like in message field context menu)
++menuSeparatorFg: #dfe5ee; // default popup menu separator (like in message field context menu)
+ 
+-scrollBarBg: #00000053; // default scroll bar current rectangle, the bar itself (like in chats list)
+-scrollBarBgOver: #0000007a; // default scroll bar current rectangle with mouse over it
+-scrollBg: #0000001a; // default scroll bar background
+-scrollBgOver: #0000002c; // default scroll bar background with mouse over the scroll bar
++scrollBarBg: #5b6b8650; // default scroll bar current rectangle, the bar itself (like in chats list)
++scrollBarBgOver: #5b6b8690; // default scroll bar current rectangle with mouse over it
++scrollBg: #5b6b8608; // default scroll bar background
++scrollBgOver: #5b6b8614; // default scroll bar background with mouse over the scroll bar
+ 
+ smallCloseIconFg: #c7c7c7; // small X icon (like in Show all sessions box to the right for sessions termination)
+ smallCloseIconFgOver: #a3a3a3; // small X icon with mouse over
+@@ -71,12 +71,12 @@ radialFg: windowFgActive; // default radial loader line (like in Media Viewer wh
+ radialBg: #00000056; // default radial loader background (like in Media Viewer when loading a photo)
+ 
+ placeholderFg: windowSubTextFg; // default input field placeholder when field is not focused (like in phone input field when you log in)
+-placeholderFgActive: #aaaaaa; // default input field placeholder when field is focused
+-inputBorderFg: #e0e0e0; // default input field bottom border (like in code input field when you log in and field is not focused)
+-filterInputBorderFg: #54c3f3; // default rounded input field border (like in chats list search field when field is focused)
+-filterInputActiveBg: windowBg; // default rounded input field active background (like in chats list search field when field is focused)
+-filterInputInactiveBg: windowBgOver; // default rounded input field inactive background (like in chats list search field when field is inactive)
+-checkboxFg: #b3b3b3; // default unchecked checkbox rounded rectangle
++placeholderFgActive: #6b778b; // default input field placeholder when field is focused
++inputBorderFg: #d5dde9; // default input field bottom border (like in code input field when you log in and field is not focused)
++filterInputBorderFg: #287da4; // default rounded input field border (like in chats list search field when field is focused)
++filterInputActiveBg: #ffffff; // default rounded input field active background (like in chats list search field when field is focused)
++filterInputInactiveBg: #e9edf4; // default rounded input field inactive background (like in chats list search field when field is inactive)
++checkboxFg: #95a1b3; // default unchecked checkbox rounded rectangle
+ 
+ botKbBg: menuBgOver; // bot keyboard button background
+ botKbDownBg: menuBgRipple; // bot keyboard button ripple effect
+@@ -91,32 +91,32 @@ botKbInlineSuccessBg: #489d38b3; // inline bot keyboard Success button backgroun
+ sliderBgInactive: #e1eaef; // default slider not active bar (like in Settings when you choose interface scale or custom notifications count)
+ sliderBgActive: windowBgActive; // default slider active bar (like in Settings when you choose interface scale or custom notifications count)
+ 
+-tooltipBg: #eef2f5; // tooltip background (like when you put mouse over the message timestamp and wait)
+-tooltipFg: #5d6c80; // tooltip text
++tooltipBg: #f1f4f9; // tooltip background (like when you put mouse over the message timestamp and wait)
++tooltipFg: #3d4d65; // tooltip text
+ tooltipBorderFg: #c9d1db; // tooltip border
+ 
+ // custom title bar
+ titleShadow: #00000003; // one pixel line shadow at the bottom of custom window title
+-titleBg: windowBgOver; // custom window title background when window is inactive
+-titleBgActive: titleBg; // custom window title background when window is active
+-titleButtonBg: titleBg; // custom window title minimize/maximize/restore button background when window is inactive (Windows only)
+-titleButtonFg: #ababab; // custom window title minimize/maximize/restore button icon when window is inactive (Windows only)
+-titleButtonBgOver: #e5e5e5; // custom window title minimize/maximize/restore button background with mouse over when window is inactive (Windows only)
++titleBg: #edf1f7; // custom window title background when window is inactive
++titleBgActive: #edf1f7; // custom window title background when window is active
++titleButtonBg: #edf1f7; // custom window title minimize/maximize/restore button background when window is inactive (Windows only)
++titleButtonFg: #6b778b; // custom window title minimize/maximize/restore button icon when window is inactive (Windows only)
++titleButtonBgOver: #dfe6f0; // custom window title minimize/maximize/restore button background with mouse over when window is inactive (Windows only)
+ titleButtonFgOver: #9a9a9a; // custom window title minimize/maximize/restore button icon with mouse over when window is inactive (Windows only)
+-titleButtonBgActive: titleButtonBg; // custom window title minimize/maximize/restore button background when window is active (Windows only)
+-titleButtonFgActive: titleButtonFg; // custom window title minimize/maximize/restore button icon when window is active (Windows only)
+-titleButtonBgActiveOver: titleButtonBgOver; // custom window title minimize/maximize/restore button background with mouse over when window is active (Windows only)
++titleButtonBgActive: #edf1f7; // custom window title minimize/maximize/restore button background when window is active (Windows only)
++titleButtonFgActive: #3d4d65; // custom window title minimize/maximize/restore button icon when window is active (Windows only)
++titleButtonBgActiveOver: #dfe6f0; // custom window title minimize/maximize/restore button background with mouse over when window is active (Windows only)
+ titleButtonFgActiveOver: titleButtonFgOver; // custom window title minimize/maximize/restore button icon with mouse over when window is active (Windows only)
+-titleButtonCloseBg: titleButtonBg; // custom window title close button background when window is inactive (Windows only)
++titleButtonCloseBg: #edf1f7; // custom window title close button background when window is inactive (Windows only)
+ titleButtonCloseFg: titleButtonFg; // custom window title close button icon when window is inactive (Windows only)
+ titleButtonCloseBgOver: #e81123; // custom window title close button background with mouse over when window is inactive (Windows only)
+ titleButtonCloseFgOver: windowFgActive; // custom window title close button icon with mouse over when window is inactive (Windows only)
+-titleButtonCloseBgActive: titleButtonCloseBg; // custom window title close button background when window is active (Windows only)
++titleButtonCloseBgActive: #edf1f7; // custom window title close button background when window is active (Windows only)
+ titleButtonCloseFgActive: titleButtonCloseFg; // custom window title close button icon when window is active (Windows only)
+ titleButtonCloseBgActiveOver: titleButtonCloseBgOver; // custom window title close button background with mouse over when window is active (Windows only)
+ titleButtonCloseFgActiveOver: titleButtonCloseFgOver; // custom window title close button icon with mouse over when window is active (Windows only)
+-titleFg: #acacac; // custom window title text when window is inactive (Windows 11 and macOS)
+-titleFgActive: #3e3c3e; // custom window title text when window is active (Windows 11 and macOS)
++titleFg: #6b778b; // custom window title text when window is inactive (Windows 11 and macOS)
++titleFgActive: #202837; // custom window title text when window is active (Windows 11 and macOS)
+ 
+ // tray icon
+ trayCounterBg: #f23c34; // tray icon counter background
+@@ -143,8 +143,8 @@ boxTitleAdditionalFg: #808080; // box title additional text (like in create grou
+ boxTitleCloseFg: cancelIconFg; // settings close icon and box search cancel icon (like in contacts box)
+ boxTitleCloseFgOver: cancelIconFgOver; // settings close icon and box search cancel icon (like in contacts box) with mouse over
+ 
+-boxDividerBg: windowBgOver; // gray divider in boxes and layers
+-boxDividerFg: windowShadowFg; // gray divider shadow in boxes and layers
++boxDividerBg: #edf1f7; // gray divider in boxes and layers
++boxDividerFg: #dfe5ee; // gray divider shadow in boxes and layers
+ 
+ paymentsTipActive: #01ad0f; // tip button text in payments checkout form
+ 
+@@ -180,25 +180,25 @@ introCoverPlaneTop: #ffffff; // intro plane part
+ dialogsMenuIconFg: menuIconFg; // main menu and passcode lock icon
+ dialogsMenuIconFgOver: menuIconFgOver; // main menu and passcode lock icon with mouse over
+ 
+-dialogsBg: windowBg; // chat list background
+-dialogsNameFg: windowBoldFg; // chat list name text
++dialogsBg: #f2f5fa; // chat list background
++dialogsNameFg: #202837; // chat list name text
+ dialogsChatIconFg: dialogsNameFg; // chat list group or channel icon
+-dialogsDateFg: windowSubTextFg; // chat list date text
+-dialogsTextFg: windowSubTextFg; // chat list message text
++dialogsDateFg: #627086; // chat list date text
++dialogsTextFg: #627086; // chat list message text
+ dialogsTextFgService: windowActiveTextFg; // chat list group sender name text (or media message type text)
+ dialogsDraftFg: #dd4b39; // chat list draft label
+ dialogsVerifiedIconBg: windowBgActive; // chat list verified icon background
+ dialogsVerifiedIconFg: windowFgActive; // chat list verified icon check
+ dialogsSendingIconFg: #c1c1c1; // chat list sending message icon (clock)
+ dialogsSentIconFg: #5dc452; // chat list sent message tick / double tick icon
+-dialogsUnreadBg: windowBgActive; // chat list unread badge background for not muted chat
+-dialogsUnreadBgMuted: #bbbbbb; // chat list unread badge background for muted chat
++dialogsUnreadBg: #287da4; // chat list unread badge background for not muted chat
++dialogsUnreadBgMuted: #65738a; // chat list unread badge background for muted chat
+ dialogsUnreadFg: windowFgActive; // chat list unread badge text
+ dialogsArchiveFg: #525252 | dialogsNameFg; // chat list archive name text
+ dialogsOnlineBadgeFg: #4dc920 | dialogsUnreadBg; // chat list online status
+ dialogsScamFg: dialogsDraftFg; // chat list scam label
+ 
+-dialogsBgOver: windowBgOver; // chat list background with mouse over
++dialogsBgOver: #e7edf5; // chat list background with mouse over
+ dialogsNameFgOver: windowBoldFgOver; // chat list name text with mouse over
+ dialogsChatIconFgOver: dialogsNameFgOver; // chat list group or channel icon with mouse over
+ dialogsDateFgOver: windowSubTextFgOver; // chat list date text with mouse over
+@@ -210,26 +210,26 @@ dialogsVerifiedIconFgOver: dialogsVerifiedIconFg; // chat list verified icon che
+ dialogsSendingIconFgOver: dialogsSendingIconFg; // chat list sending message icon (clock) with mouse over
+ dialogsSentIconFgOver: #58b84d; // chat list sent message tick / double tick icon with mouse over
+ dialogsUnreadBgOver: dialogsUnreadBg; // chat list unread badge background for not muted chat with mouse over
+-dialogsUnreadBgMutedOver: dialogsUnreadBgMuted; // chat list unread badge background for muted chat with mouse over
++dialogsUnreadBgMutedOver: #65738a; // chat list unread badge background for muted chat with mouse over
+ dialogsUnreadFgOver: dialogsUnreadFg; // chat list unread badge text with mouse over
+ dialogsArchiveFgOver: #525252 | dialogsNameFgOver; // chat list archive name text with mouse over
+ dialogsScamFgOver: dialogsDraftFgOver; // chat list scam label with mouse over
+ 
+-dialogsBgActive: #419fd9; // chat list background for current (active) chat
+-dialogsNameFgActive: windowFgActive; // chat list name text for current (active) chat
+-dialogsChatIconFgActive: dialogsNameFgActive; // chat list group or channel icon for current (active) chat
+-dialogsDateFgActive: windowFgActive; // chat list date text for current (active) chat
+-dialogsTextFgActive: windowFgActive; // chat list message text for current (active) chat
+-dialogsTextFgServiceActive: dialogsTextFgActive; // chat list group sender name text for current (active) chat
+-dialogsDraftFgActive: #c6e1f7; // chat list draft label for current (active) chat
++dialogsBgActive: #dce8f3; // chat list background for current (active) chat
++dialogsNameFgActive: #182d43; // chat list name text for current (active) chat
++dialogsChatIconFgActive: #246e98; // chat list group or channel icon for current (active) chat
++dialogsDateFgActive: #49637b; // chat list date text for current (active) chat
++dialogsTextFgActive: #425f78; // chat list message text for current (active) chat
++dialogsTextFgServiceActive: #246e98; // chat list group sender name text for current (active) chat
++dialogsDraftFgActive: #a34d58; // chat list draft label for current (active) chat
+ dialogsVerifiedIconBgActive: dialogsTextFgActive; // chat list verified icon background for current (active) chat
+ dialogsVerifiedIconFgActive: dialogsBgActive; // chat list verified icon check for current (active) chat
+-dialogsSendingIconFgActive: #ffffff99; // chat list sending message icon (clock) for current (active) chat
++dialogsSendingIconFgActive: #526f87; // chat list sending message icon (clock) for current (active) chat
+ dialogsSentIconFgActive: dialogsTextFgActive; // chat list sent message tick / double tick icon for current (active) chat
+-dialogsUnreadBgActive: dialogsTextFgActive; // chat list unread badge background for not muted chat for current (active) chat
+-dialogsUnreadBgMutedActive: dialogsDraftFgActive; // chat list unread badge background for muted chat for current (active) chat
+-dialogsUnreadFgActive: dialogsBgActive; // chat list unread badge text for current (active) chat
+-dialogsOnlineBadgeFgActive: #ffffff; // chat list online status for current (active) chat
++dialogsUnreadBgActive: #287da4; // chat list unread badge background for not muted chat for current (active) chat
++dialogsUnreadBgMutedActive: #65738a; // chat list unread badge background for muted chat for current (active) chat
++dialogsUnreadFgActive: #ffffff; // chat list unread badge text for current (active) chat
++dialogsOnlineBadgeFgActive: #278b75; // chat list online status for current (active) chat
+ dialogsScamFgActive: dialogsDraftFgActive; // chat list scam label for current (active) chat
+ 
+ dialogsRippleBg: windowBgRipple; // chat list background ripple effect
+@@ -346,34 +346,34 @@ historyScrollBarBgOver: #517c41bc; // scroll bar current rectangle with mouse ov
+ historyScrollBg: #517c414c; // scroll bar background (adjusted)
+ historyScrollBgOver: #517c416b; // scroll bar background with mouse over the scroll bar (adjusted)
+ 
+-msgInBg: windowBg; // inbox message background
+-msgInBgSelected: #c2dcf2; // inbox selected message background (and background of selected text in those messages)
+-msgOutBg: #effdde; // outbox message background
+-msgOutBgSelected: #b7dbdb; // outbox selected message background (and background of selected text in those messages)
++msgInBg: #ffffff; // inbox message background
++msgInBgSelected: #d6e5ef; // inbox selected message background (and background of selected text in those messages)
++msgOutBg: #dcecf2; // outbox message background
++msgOutBgSelected: #c2dce8; // outbox selected message background (and background of selected text in those messages)
+ msgSelectOverlay: #358cd44c; // overlay which is filling the media parts of selected messages (like in selected photo message)
+ msgStickerOverlay: #358cd47f; // overlay which is filling the selected sticker message
+ msgInServiceFg: windowActiveTextFg; // inbox message information text (like information about a forwarded message original sender)
+ msgInServiceFgSelected: windowActiveTextFg; // inbox selected message information text (like information about a forwarded message original sender)
+-msgOutServiceFg: #45a32d; // outbox message information text (like information about a forwarded message original sender)
+-msgOutServiceFgSelected: #469992; // outbox message information text (like information about a forwarded message original sender)
++msgOutServiceFg: #246e98; // outbox message information text (like information about a forwarded message original sender)
++msgOutServiceFgSelected: #246e98; // outbox message information text (like information about a forwarded message original sender)
+ msgInShadow: #748ea229; // inbox message shadow (below the bubble)
+ msgInShadowSelected: #548dbb29; // inbox selected message shadow (below the bubble)
+ msgOutShadow: #3ac3461d; // outbox message shadow (below the bubble)
+ msgOutShadowSelected: #37a78d22; // outbox selected message shadow (below the bubble)
+-msgInDateFg: #a0acb6; // inbox message time text
++msgInDateFg: #68768b; // inbox message time text
+ msgInDateFgSelected: #6a9cc5; // inbox selected message time text
+-msgOutDateFg: #6db566; // outbox message time text
++msgOutDateFg: #4c6e7f; // outbox message time text
+ msgOutDateFgSelected: #56b2a6; // outbox selected message time text
+ msgServiceFg: windowFgActive; // service message text (like date dividers or service message about the group title being changed)
+ msgServiceBg: #517c417f; // service message background (like in a service message about group title being changed) (adjusted)
+ msgServiceBgSelected: #96b38ba2; // service message selected text background (like in a service message about group title being changed) (adjusted)
+ msgInReplyBarColor: activeLineFg; // inbox message reply outline
+ msgInReplyBarSelColor: activeLineFg; // inbox selected message reply outline
+-msgOutReplyBarColor: #5eb854; // outbox message reply outline
+-msgOutReplyBarSelColor: historyOutIconFgSelected; // outbox selected message reply outline
++msgOutReplyBarColor: #287da4; // outbox message reply outline
++msgOutReplyBarSelColor: #246e98; // outbox selected message reply outline
+ msgImgReplyBarColor: msgServiceFg; // sticker message reply outline
+ msgInMonoFg: #4e7391; // inbox message monospace text (like a message sent with `test` text)
+-msgOutMonoFg: #459866; // outbox message monospace text
++msgOutMonoFg: #246e98; // outbox message monospace text
+ msgInMonoFgSelected: msgInMonoFg; // inbox message monospace text in a selected text or message
+ msgOutMonoFgSelected: msgOutMonoFg; // outbox message monospace text in a selected text or message
+ msgDateImgFg: msgServiceFg; // media message time text (like time text in a sent photo)
+@@ -445,17 +445,17 @@ youtubePlayIconBg: #e83131c8; // youtube play icon background (when a link to a
+ youtubePlayIconFg: windowFgActive; // youtube play icon arrow (when a link to a youtube video with a webpage preview is sent)
+ videoPlayIconBg: #0000007f; // other video play icon background (like when a link to a vimeo video with a webpage preview is sent)
+ videoPlayIconFg: #ffffff; // other video play icon arrow (like when a link to a vimeo video with a webpage preview is sent)
+-toastBg: #2c3033e5; // toast notification background (like when you click on your t.me link when editing your username)
++toastBg: #252e40f5; // toast notification background (like when you click on your t.me link when editing your username)
+ toastFg: #ffffff; // toast notification text (like when you click on your t.me link when editing your username)
+ 
+-historyToDownBg: windowBg; // arrow button background (to scroll to the end of the viewed chat)
+-historyToDownBgOver: windowBgOver; // arrow button background with mouse over
++historyToDownBg: #f8f9fc; // arrow button background (to scroll to the end of the viewed chat)
++historyToDownBgOver: #e7edf5; // arrow button background with mouse over
+ historyToDownBgRipple: windowBgRipple; // arrow button ripple effect
+ historyToDownFg: menuIconFg; // arrow button icon
+ historyToDownFgOver: menuIconFgOver; // arrow button icon with mouse over
+ historyToDownShadow: #00000040; // arrow button shadow
+ 
+-historyComposeAreaBg: msgInBg; // history compose area background (message write area / reply information / forwarding information)
++historyComposeAreaBg: #f8f9fc; // history compose area background (message write area / reply information / forwarding information)
+ historyComposeAreaFg: historyTextInFg; // history compose area text
+ historyComposeAreaFgService: msgInDateFg; // history compose area text when replying to a media message
+ historyComposeIconFg: menuIconFg; // history compose area icon (like emoji, attach, bot command..)
+@@ -497,8 +497,8 @@ notificationSampleCloseFg: #d7d7d7 | windowSubTextFg; // custom notifications se
+ notificationSampleTextFg: #d7d7d7 | windowSubTextFg; // custom notifications settings box small sample text placeholder
+ notificationSampleNameFg: #939393 | windowSubTextFg; // custom notifications settings box small sample name placeholder
+ 
+-mainMenuBg: windowBg; // main menu background
+-mainMenuCoverBg: dialogsBgActive; // main menu top cover background
++mainMenuBg: #f8f9fc; // main menu background
++mainMenuCoverBg: #dce8f3; // main menu top cover background
+ mainMenuCloudFg: activeButtonFg; // main menu top cover saved messages / archive button icon
+ mainMenuCloudBg: #2785bf | activeButtonBgRipple; // main menu top cover saved messages / archive button background
+ 
+@@ -522,7 +522,7 @@ mediaviewMenuBgOver: #505050; // context menu item background with mouse over
+ mediaviewMenuBgRipple: #676767; // context menu item ripple effect
+ mediaviewMenuFg: windowFgActive; // context menu item text
+ 
+-mediaviewBg: #222222eb; // Media Viewer background
++mediaviewBg: #111620ee; // Media Viewer background
+ mediaviewVideoBg: imageBg; // Media Viewer background when viewing a video in full screen
+ mediaviewControlBg: #0000003c; // controls background (like next photo / previous photo)
+ mediaviewControlFg: #ffffff; // controls icon (like next photo / previous photo)
+@@ -553,9 +553,9 @@ mediaviewTransparentFg: #cccccc; // another transparent filling part
+ notificationBg: windowBg; // custom notification window background
+ 
+ // calls
+-callBg: #26282cf2; // old phone call popup background
+-callBgOpaque: #1b1f23; // phone call popup background
+-callBgButton: #1b1f237f; // phone call window control buttons bg
++callBg: #181e2bf2; // old phone call popup background
++callBgOpaque: #181e2b; // phone call popup background
++callBgButton: #2b364aaf; // phone call window control buttons bg
+ callNameFg: #ffffff; // phone call popup name text
+ callStatusFg: #aaabac; // phone call popup status text
+ callIconBg: #ffffff1f; // phone call mute mic and camera button background
+@@ -642,14 +642,14 @@ walletTopLabelFg: #999999; // wallet top updated label text
+ walletTopIconFg: walletTopLabelFg; // wallet top refresh and menu icons
+ walletTopIconRipple: #ffffff12; // wallet top menu icon ripple effect
+ 
+-sideBarBg: #293a4c; // filters side bar background
+-sideBarBgActive: #17212b; // filters side bar active background
+-sideBarBgRipple: #1e2b38; // filters side bar ripple effect
+-sideBarTextFg: #8897a6; // filters side bar text
+-sideBarTextFgActive: #64b9fa; // filters side bar active item text
+-sideBarIconFg: #8393a3; // filters side bar icon
+-sideBarIconFgActive: #5eb5f7; // filters side bar active item icon
+-sideBarBadgeBg: #5eb5f7; // filters side bar badge background
++sideBarBg: #e8edf5; // filters side bar background
++sideBarBgActive: #d2e1ee; // filters side bar active background
++sideBarBgRipple: #c8d8e8; // filters side bar ripple effect
++sideBarTextFg: #6b778b; // filters side bar text
++sideBarTextFgActive: #246e98; // filters side bar active item text
++sideBarIconFg: #6b778b; // filters side bar icon
++sideBarIconFgActive: #246e98; // filters side bar active item icon
++sideBarBadgeBg: #287da4; // filters side bar badge background
+ sideBarBadgeBgActive: sideBarBadgeBg; // filters side bar badge background when folder is open
+ sideBarBadgeBgMuted: #8393a3; // filters side bar unimportant badge background
+ sideBarBadgeBgMutedActive: sideBarBadgeBg; // filters side bar unimportant badge background when folder is open
+diff --git a/ui/integration.cpp b/ui/integration.cpp
+index 61fd017..aef8f2e 100644
+--- a/ui/integration.cpp
++++ b/ui/integration.cpp
+@@ -24,6 +24,15 @@ bool Integration::processScrollWheel(QWidget*, QWheelEvent*) {
+ 	return false;
+ }
+ 
++bool Integration::paintSurface(
++		QPainter &,
++		const QRect &,
++		const QColor &,
++		int,
++		SurfaceRole) {
++	return false;
++}
++
+ void Integration::Set(not_null<Integration*> instance) {
+ 	IntegrationInstance = instance;
+ 
+diff --git a/ui/integration.h b/ui/integration.h
+index d4e5f7a..d8fa2ba 100644
+--- a/ui/integration.h
++++ b/ui/integration.h
+@@ -17,6 +17,9 @@
+ class QString;
+ class QWidget;
+ class QWheelEvent;
++class QPainter;
++class QRect;
++class QColor;
+ class QVariant;
+ 
+ struct TextParseOptions;
+@@ -25,6 +28,17 @@ struct ClickContext;
+ struct EntityLinkData;
+ 
+ namespace Ui {
++
++enum class SurfaceRole {
++	Menu,
++	MenuItem,
++	Dialog,
++	Settings,
++	Navigation,
++	Title,
++	Toast,
++};
++
+ namespace Emoji {
+ class One;
+ } // namespace Emoji
+@@ -50,6 +64,12 @@ public:
+ 	[[nodiscard]] virtual QString angleBackendFilePath() = 0;
+ 
+ 	virtual bool processScrollWheel(QWidget *scroll, QWheelEvent *event);
++	virtual bool paintSurface(
++		QPainter &p,
++		const QRect &rect,
++		const QColor &tint,
++		int radius,
++		SurfaceRole role);
+ 	virtual void textActionsUpdated();
+ 	virtual void activationFromTopPanel();
+ 	virtual void touchCounterIncrement() = 0;
+diff --git a/ui/layers/box_layer_widget.cpp b/ui/layers/box_layer_widget.cpp
+index 7a9c2b7..ef62567 100644
+--- a/ui/layers/box_layer_widget.cpp
++++ b/ui/layers/box_layer_widget.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/layers/box_layer_widget.h"
++#include "ui/integration.h"
+ 
+ #include "ui/effects/radial_animation.h"
+ #include "ui/widgets/buttons.h"
+@@ -151,6 +152,10 @@ void BoxLayerWidget::paintEvent(QPaintEvent *e) {
+ 			p.fillRect(rect, st().bg);
+ 		}
+ 	}
++	if (Integration::Exists() && _customCornersFilling == RectPart::None) {
++		Integration::Instance().paintSurface(
++			p, rect(), st().bg->c, st::boxRadius, SurfaceRole::Dialog);
++	}
+ 	if (!_additionalTitle.current().isEmpty()
+ 		&& clip.intersects(QRect(0, 0, width(), titleHeight()))) {
+ 		paintAdditionalTitle(p);
+diff --git a/ui/layers/layers.style b/ui/layers/layers.style
+index ebb7796..0f38aea 100644
+--- a/ui/layers/layers.style
++++ b/ui/layers/layers.style
+@@ -35,7 +35,7 @@ Box {
+ }
+ 
+ boxDuration: 200;
+-boxRadius: 8px;
++boxRadius: 16px;
+ 
+ boxButtonFont: font(boxFontSize semibold);
+ defaultBoxButtonTextStyle: TextStyle(semiboldTextStyle) {
+diff --git a/ui/platform/win/ui_window_title_win.cpp b/ui/platform/win/ui_window_title_win.cpp
+index 0311cc3..6ae78d4 100644
+--- a/ui/platform/win/ui_window_title_win.cpp
++++ b/ui/platform/win/ui_window_title_win.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/platform/win/ui_window_title_win.h"
++#include "ui/integration.h"
+ 
+ #include "ui/platform/win/ui_window_win.h"
+ #include "ui/widgets/buttons.h"
+@@ -137,9 +138,13 @@ void TitleWidget::setResizeEnabled(bool enabled) {
+ 
+ void TitleWidget::paintEvent(QPaintEvent *e) {
+ 	const auto active = window()->isActiveWindow();
+-	QPainter(this).fillRect(
+-		e->rect(),
+-		active ? _controls.st()->bgActive : _controls.st()->bg);
++	const auto bg = active ? _controls.st()->bgActive : _controls.st()->bg;
++	auto p = QPainter(this);
++	p.setClipRect(e->rect());
++	if (!Integration::Exists() || !Integration::Instance().paintSurface(
++			p, rect(), bg->c, 0, SurfaceRole::Title)) {
++		p.fillRect(e->rect(), bg);
++	}
+ }
+ 
+ void TitleWidget::resizeEvent(QResizeEvent *e) {
+diff --git a/ui/toast/toast_widget.cpp b/ui/toast/toast_widget.cpp
+index 433b8f3..08ec450 100644
+--- a/ui/toast/toast_widget.cpp
++++ b/ui/toast/toast_widget.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/toast/toast_widget.h"
++#include "ui/integration.h"
+ 
+ #include "ui/image/image_prepare.h"
+ #include "ui/painter.h"
+@@ -509,6 +510,10 @@ void Widget::setShownLevel(float64 shownLevel) {
+ }
+ 
+ void Widget::paintBackground(QPainter &p) {
++	if (Integration::Exists() && Integration::Instance().paintSurface(
++			p, rect(), st::toastBg->c, _st->radius, SurfaceRole::Toast)) {
++		return;
++	}
+ 	auto hq = PainterHighQualityEnabler(p);
+ 	_roundRect.paint(p, rect());
+ }
+diff --git a/ui/widgets/buttons.cpp b/ui/widgets/buttons.cpp
+index 690ba6f..495aebd 100644
+--- a/ui/widgets/buttons.cpp
++++ b/ui/widgets/buttons.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/buttons.h"
++#include "ui/integration.h"
+ 
+ #include "ui/effects/ripple_animation.h"
+ #include "ui/effects/cross_animation.h"
+@@ -991,6 +992,14 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
+ }
+ 
+ void SettingsButton::paintBg(Painter &p, const QRect &rect, bool over) const {
++	if (Integration::Exists() && Integration::Instance().paintSurface(
++			p,
++			this->rect(),
++			(over ? _st.textBgOver : _st.textBg)->c,
++			st::buttonRadius,
++			SurfaceRole::Settings)) {
++		return;
++	}
+ 	p.fillRect(rect, over ? _st.textBgOver : _st.textBg);
+ }
+ 
+diff --git a/ui/widgets/menu/menu.cpp b/ui/widgets/menu/menu.cpp
+index 5421134..b2567cc 100644
+--- a/ui/widgets/menu/menu.cpp
++++ b/ui/widgets/menu/menu.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/menu/menu.h"
++#include "ui/integration.h"
+ 
+ #include "ui/widgets/menu/menu_action.h"
+ #include "ui/widgets/menu/menu_item_base.h"
+@@ -54,7 +55,12 @@ void Menu::init() {
+ 
+ 	paintRequest(
+ 	) | rpl::on_next([=](const QRect &clip) {
+-		QPainter(this).fillRect(clip, _st.itemBg);
++		auto p = QPainter(this);
++		p.setClipRect(clip);
++		if (!Integration::Exists() || !Integration::Instance().paintSurface(
++				p, rect(), _st.itemBg->c, 0, SurfaceRole::Menu)) {
++			p.fillRect(clip, _st.itemBg);
++		}
+ 	}, lifetime());
+ 
+ 	positionValue(
+diff --git a/ui/widgets/menu/menu_action.cpp b/ui/widgets/menu/menu_action.cpp
+index 4c16b67..e194469 100644
+--- a/ui/widgets/menu/menu_action.cpp
++++ b/ui/widgets/menu/menu_action.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/menu/menu_action.h"
++#include "ui/integration.h"
+ 
+ #include "ui/effects/ripple_animation.h"
+ #include "ui/painter.h"
+@@ -96,6 +97,14 @@ void Action::paintEvent(QPaintEvent *e) {
+ }
+ 
+ void Action::paintBackground(QPainter &p, bool selected) {
++	if (Integration::Exists() && Integration::Instance().paintSurface(
++			p,
++			QRect(0, 0, width(), _height),
++			selected ? _st.itemBgOver->c : QColor(Qt::transparent),
++			st::buttonRadius,
++			SurfaceRole::MenuItem)) {
++		return;
++	}
+ 	if (selected && _st.itemBgOver->c.alpha() < 255) {
+ 		p.fillRect(0, 0, width(), _height, _st.itemBg);
+ 	}
+diff --git a/ui/widgets/side_bar_button.cpp b/ui/widgets/side_bar_button.cpp
+index 7633972..43a64bc 100644
+--- a/ui/widgets/side_bar_button.cpp
++++ b/ui/widgets/side_bar_button.cpp
+@@ -5,6 +5,7 @@
+ // https://github.com/desktop-app/legal/blob/master/LEGAL
+ //
+ #include "ui/widgets/side_bar_button.h"
++#include "ui/integration.h"
+ 
+ #include "ui/effects/ripple_animation.h"
+ #include "ui/painter.h"
+@@ -167,7 +168,10 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
+ 	const auto clip = e->rect();
+ 
+ 	const auto &bg = _active ? _st.textBgActive : _st.textBg;
+-	p.fillRect(clip, bg);
++	if (!Integration::Exists() || !Integration::Instance().paintSurface(
++			p, rect(), bg->c, st::buttonRadius, SurfaceRole::Navigation)) {
++		p.fillRect(clip, bg);
++	}
+ 
+ 	RippleButton::paintRipple(p, 0, 0);
+ 
+diff --git a/ui/widgets/widgets.style b/ui/widgets/widgets.style
+index 8b8df7d..37dd8e3 100644
+--- a/ui/widgets/widgets.style
++++ b/ui/widgets/widgets.style
+@@ -713,7 +713,7 @@ defaultRippleAnimationBgOver: RippleAnimation(defaultRippleAnimation) {
+ 	color: windowBgOver;
+ }
+ 
+-buttonRadius: 4px;
++buttonRadius: 10px;
+ 
+ defaultActiveButton: RoundButton {
+ 	textFg: activeButtonFg;
+@@ -810,7 +810,7 @@ defaultScrollArea: ScrollArea {
+ 	barBg: scrollBarBg;
+ 	barBgOver: scrollBarBgOver;
+ 
+-	round: 2px;
++	round: 3px;
+ 
+ 	width: 10px;
+ 	minHeight: 20px;
+@@ -992,7 +992,7 @@ defaultPopupMenu: PopupMenu {
+ 
+ 	menu: defaultMenu;
+ 
+-	radius: 8px;
++	radius: 14px;
+ 	duration: 150;
+ 	showDuration: 200;
+ }
+@@ -1553,7 +1553,7 @@ defaultToast: Toast {
+ 	padding: margins(19px, 13px, 19px, 12px);
+ 	margin: margins(13px, 13px, 13px, 13px);
+ 	maxWidth: 480px;
+-	radius: 8px;
++	radius: 14px;
+ 	durationFadeIn: 200;
+ 	durationFadeOut: 1000;
+ 	durationSlide: 160;
+@@ -1566,8 +1566,8 @@ defaultMultilineToast: Toast(defaultToast) {
+ 
+ // Windows specific title
+ 
+-windowTitleButtonWidth: 36px;
+-windowTitleHeight: 24px;
++windowTitleButtonWidth: 44px;
++windowTitleHeight: 32px;
+ windowTitleButton: IconButton {
+ 	width: windowTitleButtonWidth;
+ 	height: windowTitleHeight;
+@@ -1592,72 +1592,72 @@ defaultWindowTitle: WindowTitle {
+ 	minimize: IconButton(windowTitleButton) {
+ 		icon: icon {
+ 			{ windowTitleButtonSize, titleButtonBg },
+-			{ "title_button_minimize", titleButtonFg },
++			{ "title_button_minimize", titleButtonFg, point(4px, 4px) },
+ 		};
+ 		iconOver: icon {
+ 			{ windowTitleButtonSize, titleButtonBgOver },
+-			{ "title_button_minimize", titleButtonFgOver },
++			{ "title_button_minimize", titleButtonFgOver, point(4px, 4px) },
+ 		};
+ 	}
+ 	minimizeIconActive: icon {
+ 		{ windowTitleButtonSize, titleButtonBgActive },
+-		{ "title_button_minimize", titleButtonFgActive },
++		{ "title_button_minimize", titleButtonFgActive, point(4px, 4px) },
+ 	};
+ 	minimizeIconActiveOver: icon {
+ 		{ windowTitleButtonSize, titleButtonBgActiveOver },
+-		{ "title_button_minimize", titleButtonFgActiveOver },
++		{ "title_button_minimize", titleButtonFgActiveOver, point(4px, 4px) },
+ 	};
+ 	maximize: IconButton(windowTitleButton) {
+ 		icon: icon {
+ 			{ windowTitleButtonSize, titleButtonBg },
+-			{ "title_button_maximize", titleButtonFg },
++			{ "title_button_maximize", titleButtonFg, point(4px, 4px) },
+ 		};
+ 		iconOver: icon {
+ 			{ windowTitleButtonSize, titleButtonBgOver },
+-			{ "title_button_maximize", titleButtonFgOver },
++			{ "title_button_maximize", titleButtonFgOver, point(4px, 4px) },
+ 		};
+ 	}
+ 	maximizeIconActive: icon {
+ 		{ windowTitleButtonSize, titleButtonBgActive },
+-		{ "title_button_maximize", titleButtonFgActive },
++		{ "title_button_maximize", titleButtonFgActive, point(4px, 4px) },
+ 	};
+ 	maximizeIconActiveOver: icon {
+ 		{ windowTitleButtonSize, titleButtonBgActiveOver },
+-		{ "title_button_maximize", titleButtonFgActiveOver },
++		{ "title_button_maximize", titleButtonFgActiveOver, point(4px, 4px) },
+ 	};
+ 	restoreIcon: icon {
+ 		{ windowTitleButtonSize, titleButtonBg },
+-		{ "title_button_restore", titleButtonFg },
++		{ "title_button_restore", titleButtonFg, point(4px, 4px) },
+ 	};
+ 	restoreIconOver: icon {
+ 		{ windowTitleButtonSize, titleButtonBgOver },
+-		{ "title_button_restore", titleButtonFgOver },
++		{ "title_button_restore", titleButtonFgOver, point(4px, 4px) },
+ 	};
+ 	restoreIconActive: icon {
+ 		{ windowTitleButtonSize, titleButtonBgActive },
+-		{ "title_button_restore", titleButtonFgActive },
++		{ "title_button_restore", titleButtonFgActive, point(4px, 4px) },
+ 	};
+ 	restoreIconActiveOver: icon {
+ 		{ windowTitleButtonSize, titleButtonBgActiveOver },
+-		{ "title_button_restore", titleButtonFgActiveOver },
++		{ "title_button_restore", titleButtonFgActiveOver, point(4px, 4px) },
+ 	};
+ 	close: IconButton(windowTitleButtonClose) {
+ 		icon: icon {
+ 			{ windowTitleButtonSize, titleButtonCloseBg },
+-			{ "title_button_close", titleButtonCloseFg },
++			{ "title_button_close", titleButtonCloseFg, point(4px, 4px) },
+ 		};
+ 		iconOver: icon {
+ 			{ windowTitleButtonSize, titleButtonCloseBgOver },
+-			{ "title_button_close", titleButtonCloseFgOver },
++			{ "title_button_close", titleButtonCloseFgOver, point(4px, 4px) },
+ 		};
+ 	}
+ 	closeIconActive: icon {
+ 		{ windowTitleButtonSize, titleButtonCloseBgActive },
+-		{ "title_button_close", titleButtonCloseFgActive },
++		{ "title_button_close", titleButtonCloseFgActive, point(4px, 4px) },
+ 	};
+ 	closeIconActiveOver: icon {
+ 		{ windowTitleButtonSize, titleButtonCloseBgActiveOver },
+-		{ "title_button_close", titleButtonCloseFgActiveOver },
++		{ "title_button_close", titleButtonCloseFgActiveOver, point(4px, 4px) },
+ 	};
+ }
+ 

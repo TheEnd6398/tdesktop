@@ -11,7 +11,7 @@ if (-not (Test-Path (Join-Path $source 'Telegram.exe'))) {
 if (Test-Path $Destination) {
     throw 'The artifact destination already exists; preserve it or choose a new one.'
 }
-$package = Join-Path $Destination 'LiquidGlass'
+$package = Join-Path $Destination 'AuroraGlass'
 New-Item -ItemType Directory -Path $package -Force | Out-Null
 Get-ChildItem $source -File | Where-Object {
     $_.Extension -in '.exe', '.dll', '.rcc', '.bin', '.dat'
@@ -24,13 +24,13 @@ if (Test-Path (Join-Path $source 'modules')) {
 $checkout = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 Copy-Item (Join-Path $checkout 'LICENSE') $package
 Copy-Item (Join-Path $checkout 'LEGAL') $package
-Copy-Item (Join-Path $checkout 'docs/fork/BUILDING.md') (Join-Path $package 'README.md')
+Copy-Item (Join-Path $checkout 'docs/fork/AURORA_GLASS.md') (Join-Path $package 'README.md')
 Copy-Item (Join-Path $checkout 'docs/fork/IMPLEMENTATION.md') $package
 @'
 @echo off
 if not exist "%~dp0profile" mkdir "%~dp0profile"
-start "Liquid Glass fork" "%~dp0Telegram.exe" -workdir "%~dp0profile" %*
-'@ | Set-Content -Encoding ascii (Join-Path $package 'Start Liquid Glass.cmd')
+start "Aurora Glass fork" "%~dp0Telegram.exe" -workdir "%~dp0profile" %*
+'@ | Set-Content -Encoding ascii (Join-Path $package 'Start Aurora Glass.cmd')
 $imports = & dumpbin /dependents (Join-Path $package 'Telegram.exe')
 if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the executable imports.' }
 $imports | Set-Content (Join-Path $package 'imports.txt')
@@ -43,4 +43,4 @@ if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
     native_build_run = $env:GITHUB_RUN_ID
     executable_sha256 = (Get-FileHash (Join-Path $package 'Telegram.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
 } | ConvertTo-Json | Set-Content -Encoding utf8NoBOM (Join-Path $package 'BUILD-INFO.json')
-Compress-Archive -Path $package -DestinationPath (Join-Path $Destination 'LiquidGlass-Windows-x64.zip')
+Compress-Archive -Path $package -DestinationPath (Join-Path $Destination 'AuroraGlass-Windows-x64.zip')

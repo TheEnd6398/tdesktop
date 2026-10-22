@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/main_window.h"
+#include "ui/chat/glass_surface.h"
 
 #include "api/api_updates.h"
 #include "storage/localstorage.h"
@@ -914,7 +915,10 @@ void MainWindow::updateTitle() {
 		: Dialogs::Key();
 	const auto thread = key ? key.thread() : nullptr;
 	if (!thread) {
-		setTitle((user.isEmpty() ? u"Telegram"_q : user) + added + suffix);
+		const auto applicationTitle = Ui::Glass::Enabled()
+			? u"Aurora Glass"_q
+			: u"Telegram"_q;
+		setTitle((user.isEmpty() ? applicationTitle : user) + added + suffix);
 		return;
 	}
 	const auto history = thread->owningHistory();

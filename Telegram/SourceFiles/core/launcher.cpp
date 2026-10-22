@@ -342,7 +342,7 @@ void Launcher::init() {
 	initQtMessageLogging();
 
 #if defined Q_OS_WIN && defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-	QApplication::setApplicationName(u"LiquidGlass"_q);
+	QApplication::setApplicationName(u"AuroraGlass"_q);
 #else
 	QApplication::setApplicationName(u"TelegramDesktop"_q);
 #endif

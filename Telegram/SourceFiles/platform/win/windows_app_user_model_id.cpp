@@ -28,7 +28,7 @@ const PROPERTYKEY pkey_AppUserModel_ToastActivator = { { 0x9F4C2855, 0x9F79, 0x4
 #ifdef OS_WIN_STORE
 const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop.Store";
 #elif defined TDESKTOP_FORK_LIQUID_GLASS
-const WCHAR AppUserModelIdBase[] = L"LiquidGlass.TelegramDesktop";
+const WCHAR AppUserModelIdBase[] = L"AuroraGlass.TelegramDesktop";
 #else // OS_WIN_STORE
 const WCHAR AppUserModelIdBase[] = L"Telegram.TelegramDesktop";
 #endif // OS_WIN_STORE
@@ -216,7 +216,7 @@ void CleanupShortcut() {
 	}
 
 #if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-	QString path = systemShortcutPath() + u"Liquid Glass.lnk"_q;
+	QString path = systemShortcutPath() + u"Aurora Glass.lnk"_q;
 #else
 	QString path = systemShortcutPath() + u"Telegram.lnk"_q;
 #endif
@@ -352,7 +352,7 @@ bool checkInstalled(QString path = {}) {
 	}
 
 #if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-	return validateShortcutAt(path + u"Liquid Glass/Liquid Glass.lnk"_q);
+	return validateShortcutAt(path + u"Aurora Glass/Aurora Glass.lnk"_q);
 #else
 	const auto installed = u"Telegram Desktop/Telegram.lnk"_q;
 	const auto old = u"Telegram Win (Unofficial)/Telegram.lnk"_q;
@@ -368,7 +368,7 @@ bool ValidateShortcut() {
 	}
 
 #if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-	path += u"Liquid Glass.lnk"_q;
+	path += u"Aurora Glass.lnk"_q;
 	if (validateShortcutAt(path)) {
 		return true;
 	}

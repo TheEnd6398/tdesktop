@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_lock_widgets.h"
+#include "ui/chat/glass_surface.h"
 
 #include "base/platform/base_platform_info.h"
 #include "base/call_delayed.h"
@@ -116,7 +117,12 @@ void LockWidget::paintEvent(QPaintEvent *e) {
 }
 
 void LockWidget::paintContent(QPainter &p) {
-	p.fillRect(rect(), st::windowBg);
+	if (Ui::Glass::Enabled()) {
+		Ui::Glass::PaintPanel(p, rect(), st::windowBg->c,
+			Ui::Glass::Material::Smoked);
+	} else {
+		p.fillRect(rect(), st::windowBg);
+	}
 }
 
 PasscodeLockWidget::PasscodeLockWidget(

@@ -8,6 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h"
 
 #include "ui/widgets/smooth_wheel_scroll.h"
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
 #include "api/api_text_entities.h"
 #include "core/local_url_handlers.h"
 #include "core/file_utilities.h"
@@ -41,6 +43,42 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QLocale>
 
 namespace Core {
+
+bool UiIntegration::paintSurface(
+		QPainter &p,
+		const QRect &rect,
+		const QColor &tint,
+		int radius,
+		Ui::SurfaceRole role) {
+	if (!Ui::Glass::Enabled()) {
+		return false;
+	}
+	using Role = Ui::SurfaceRole;
+	using Material = Ui::Glass::Material;
+	const auto item = role == Role::MenuItem
+		|| role == Role::Settings
+		|| role == Role::Navigation;
+	if (item && !tint.alpha()) {
+		return true;
+	}
+	if (role == Role::Settings) {
+		p.fillRect(rect, st::windowBg);
+	}
+	const auto area = item
+		? rect.marginsRemoved(QMargins(st::glassGap, st::lineWidth,
+			st::glassGap, st::lineWidth))
+		: rect;
+	const auto material = (role == Role::Dialog)
+		? Material::Soft
+		: (role == Role::Toast || role == Role::Navigation)
+		? Material::Smoked
+		: item
+		? Material::Content
+		: Material::Frosted;
+	Ui::Glass::PaintPanel(p, area, tint, material, radius);
+	return true;
+}
+
 namespace {
 
 const auto kGoodPrefix = u"https://"_q;

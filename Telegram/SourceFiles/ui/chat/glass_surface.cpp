@@ -20,7 +20,6 @@
 #include <QtGui/QPaintEvent>
 #include <QtGui/QPainterPath>
 
-
 namespace Ui::Glass {
 namespace {
 
@@ -209,6 +208,8 @@ void PrepareBackdrop(
 	}
 	surface.setTintOpacity(st::glassTintOpacity);
 	surface.setBlurRadius(st::glassBlurRadius);
+	surface.setMaterial(Material::Frosted,
+		st::windowActiveTextFg->c, st::lineWidth);
 	if (!BlurEnabled()) {
 		surface.clear();
 		return;
@@ -264,6 +265,16 @@ rpl::producer<bool> EnabledValue() {
 
 bool BlurEnabled() {
 	return Enabled() && !PowerSaving::On(PowerSaving::kGlassBlur);
+}
+
+void PaintPanel(
+		QPainter &p,
+		QRect rect,
+		QColor tint,
+		Material material,
+		int radius) {
+	PaintMaterial(p, rect, tint, st::windowActiveTextFg->c,
+		radius, st::lineWidth, material);
 }
 
 QRect ButtonRect(QRect rect) {
@@ -449,6 +460,8 @@ void PrepareChat(
 	}
 	surface.setTintOpacity(st::glassTintOpacity);
 	surface.setBlurRadius(st::glassBlurRadius);
+	surface.setMaterial(Material::Crystal,
+		st::windowActiveTextFg->c, st::lineWidth);
 	if (!BlurEnabled()) {
 		surface.clear();
 		return;

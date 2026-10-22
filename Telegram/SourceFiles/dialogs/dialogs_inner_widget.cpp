@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_inner_widget.h"
+#include "ui/chat/glass_surface.h"
+#include "styles/style_fork_glass.h"
 
 #include "dialogs/dialogs_three_state_icon.h"
 #include "dialogs/ui/chat_search_empty.h"
@@ -1873,13 +1875,21 @@ void InnerWidget::paintPeerSearchResult(
 		not_null<const PeerSearchResult*> result,
 		const Ui::PaintContext &context) {
 	QRect fullRect(0, 0, context.width, st::dialogsRowHeight);
-	p.fillRect(
-		fullRect,
-		(context.active
-			? st::dialogsBgActive
-			: context.selected
-			? st::dialogsBgOver
-			: currentBg()));
+	const auto bg = context.active
+		? st::dialogsBgActive
+		: context.selected
+		? st::dialogsBgOver
+		: currentBg();
+	if (Ui::Glass::Enabled()) {
+		p.fillRect(fullRect, currentBg());
+		if (context.active || context.selected) {
+			Ui::Glass::PaintPanel(p, fullRect.marginsRemoved(QMargins(
+				st::glassGap, st::glassInset, st::glassGap, st::glassInset)),
+				bg->color(), Ui::Glass::Material::Soft, st::glassRowRadius);
+		}
+	} else {
+		p.fillRect(fullRect, bg);
+	}
 	if (!context.active) {
 		result->row.paintRipple(p, 0, 0, context.width);
 	}

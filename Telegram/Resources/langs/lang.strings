@@ -970,7 +970,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_power_chat_background" = "Wallpaper rotation";
 "lng_settings_power_chat_spoiler" = "Animated spoiler effect";
 "lng_settings_power_chat_effects" = "Effects in messages";
-"lng_settings_liquid_glass" = "Liquid Glass interface";
+"lng_settings_liquid_glass" = "Aurora Glass interface";
 "lng_settings_power_glass_blur" = "Glass background blur";
 "lng_settings_power_smooth_scroll" = "Smooth mouse-wheel scrolling";
 "lng_settings_power_calls" = "Animations in Calls";

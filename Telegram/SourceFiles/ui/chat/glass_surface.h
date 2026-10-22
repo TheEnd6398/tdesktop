@@ -32,6 +32,12 @@ namespace Ui::Glass {
 void SetEnabled(bool enabled);
 [[nodiscard]] rpl::producer<bool> EnabledValue();
 [[nodiscard]] bool BlurEnabled();
+void PaintPanel(
+	QPainter &p,
+	QRect rect,
+	QColor tint,
+	Material material = Material::Frosted,
+	int radius = 0);
 [[nodiscard]] QRect ButtonRect(QRect rect);
 void BindButtonFeedback(not_null<AbstractButton*> button);
 void SetChatBackdropPreparation(not_null<RpWidget*> owner, Fn<void()> prepare);

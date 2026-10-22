@@ -18,6 +18,14 @@ add_executable(test_glass_material
 target_include_directories(test_glass_material PRIVATE ../..)
 target_link_libraries(test_glass_material PRIVATE Qt6::Gui Qt6::Widgets)
 add_test(NAME glass_material COMMAND test_glass_material)
+add_executable(test_aurora_material
+    test_aurora_material.cpp
+    ../../ui/chat/glass_material.cpp
+    ../../ui/chat/glass_blur.cpp
+)
+target_include_directories(test_aurora_material PRIVATE ../..)
+target_link_libraries(test_aurora_material PRIVATE Qt6::Gui Qt6::Widgets)
+add_test(NAME aurora_material COMMAND test_aurora_material)
 add_executable(test_smooth_wheel
     test_smooth_wheel.cpp
     ../../ui/widgets/smooth_wheel_model.cpp

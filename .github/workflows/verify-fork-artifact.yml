@@ -1,12 +1,6 @@
-name: Verify Windows fork package
+name: Verify Aurora Windows package
 
 on:
-  push:
-    branches:
-      - feature/liquid-glass-ui
-    paths:
-      - .github/workflows/verify-fork-artifact.yml
-      - Telegram/build/fork/verify-package.py
   workflow_dispatch:
     inputs:
       artifact_id:
@@ -50,14 +44,14 @@ jobs:
           if requested:
               artifact = json.loads(gh('api', f'repos/{repo}/actions/artifacts/{int(requested)}'))
           else:
-              runs = json.loads(gh('api', f'repos/{repo}/actions/workflows/fork-win-x64.yml/runs?branch=feature%2Fliquid-glass-ui&status=success&per_page=1'))
+              runs = json.loads(gh('api', f'repos/{repo}/actions/workflows/fork-win-x64.yml/runs?branch=feature%2Faurora-glass&status=success&per_page=1'))
               run = runs['workflow_runs'][0]
               artifacts = json.loads(gh('api', f'repos/{repo}/actions/runs/{run["id"]}/artifacts'))
-              artifact = next(a for a in artifacts['artifacts'] if not a['expired'] and a['name'].startswith('LiquidGlass-Windows-x64-'))
+              artifact = next(a for a in artifacts['artifacts'] if not a['expired'] and a['name'].startswith('AuroraGlass-Windows-x64-'))
           commit = artifact['workflow_run']['head_sha']
           if artifact['expired'] or not re.fullmatch(r'[0-9a-f]{40}', commit):
               raise RuntimeError('The selected artifact is expired or has invalid provenance.')
-          if artifact['name'] != f'LiquidGlass-Windows-x64-{commit}':
+          if artifact['name'] != f'AuroraGlass-Windows-x64-{commit}':
               raise RuntimeError('Select an original native build artifact.')
           run_id = artifact['workflow_run']['id']
           native_run = json.loads(gh('api', f'repos/{repo}/actions/runs/{run_id}'))
@@ -65,20 +59,20 @@ jobs:
               raise RuntimeError('The native build did not succeed at the selected source commit.')
           gh('run', 'download', str(run_id), '--repo', repo, '--name', artifact['name'], '--dir', 'artifact-check')
           available = json.loads(gh('api', f'repos/{repo}/actions/runs/{run_id}/artifacts'))
-          benchmark = next((a for a in available['artifacts'] if not a['expired'] and a['name'] == f'LiquidGlass-strip-benchmark-{commit}'), None)
+          benchmark = next((a for a in available['artifacts'] if not a['expired'] and a['name'] == f'AuroraGlass-strip-benchmark-{commit}'), None)
           if benchmark:
               gh('run', 'download', str(run_id), '--repo', repo, '--name', benchmark['name'], '--dir', 'artifact-check/performance')
-          archive = pathlib.Path('artifact-check/LiquidGlass-Windows-x64.zip')
+          archive = pathlib.Path('artifact-check/AuroraGlass-Windows-x64.zip')
           with zipfile.ZipFile(archive) as package:
-              binary_hash = hashlib.sha256(package.read('LiquidGlass/Telegram.exe')).hexdigest()
-              needs_guide = 'LiquidGlass/IMPLEMENTATION.md' not in package.namelist()
-              needs_provenance = 'LiquidGlass/BUILD-INFO.json' not in package.namelist()
+              binary_hash = hashlib.sha256(package.read('AuroraGlass/Telegram.exe')).hexdigest()
+              needs_guide = 'AuroraGlass/IMPLEMENTATION.md' not in package.namelist()
+              needs_provenance = 'AuroraGlass/BUILD-INFO.json' not in package.namelist()
           with zipfile.ZipFile(archive, 'a', compression=zipfile.ZIP_DEFLATED) as package:
               if needs_guide:
                   guide = json.loads(gh('api', f'repos/{repo}/contents/docs/fork/IMPLEMENTATION.md?ref={commit}'))
-                  package.writestr('LiquidGlass/IMPLEMENTATION.md', base64.b64decode(guide['content']))
+                  package.writestr('AuroraGlass/IMPLEMENTATION.md', base64.b64decode(guide['content']))
               if needs_provenance:
-                  package.writestr('LiquidGlass/BUILD-INFO.json', json.dumps({
+                  package.writestr('AuroraGlass/BUILD-INFO.json', json.dumps({
                       'source_commit': commit,
                       'native_build_run': run_id,
                       'native_build_artifact': artifact['id'],
@@ -97,9 +91,9 @@ jobs:
           PY
       - uses: actions/upload-artifact@v7
         with:
-          name: LiquidGlass-Windows-x64-${{ env.VERIFIED_SOURCE }}-verified
+          name: AuroraGlass-Windows-x64-${{ env.VERIFIED_SOURCE }}-verified
           path: |
-            artifact-check/LiquidGlass-Windows-x64.zip
+            artifact-check/AuroraGlass-Windows-x64.zip
             artifact-check/verification.json
             artifact-check/performance/*.json
           if-no-files-found: error
@@ -116,7 +110,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: LiquidGlass-Windows-x64-${{ needs.verify.outputs.source }}-verified
+          name: AuroraGlass-Windows-x64-${{ needs.verify.outputs.source }}-verified
           path: release
       - name: Publish the verified portable preview
         env:
@@ -131,7 +125,7 @@ jobs:
           if not re.fullmatch(r'[0-9a-f]{40}', commit):
               raise RuntimeError('Invalid verified source commit.')
           directory = pathlib.Path('release')
-          archive = directory / 'LiquidGlass-Windows-x64.zip'
+          archive = directory / 'AuroraGlass-Windows-x64.zip'
           report_file = directory / 'verification.json'
           report = json.loads(report_file.read_text())
           performance = sorted((directory / 'performance').glob('*.json'))
@@ -139,20 +133,20 @@ jobs:
           if report['source_commit'] != commit or report['sha256'] != digest:
               raise RuntimeError('The release package does not match its verification report.')
           with zipfile.ZipFile(archive) as package:
-              provenance = json.loads(package.read('LiquidGlass/BUILD-INFO.json'))
-              binary_hash = hashlib.sha256(package.read('LiquidGlass/Telegram.exe')).hexdigest()
+              provenance = json.loads(package.read('AuroraGlass/BUILD-INFO.json'))
+              binary_hash = hashlib.sha256(package.read('AuroraGlass/Telegram.exe')).hexdigest()
           if provenance['source_commit'] != commit or provenance['executable_sha256'] != binary_hash or report['executable_sha256'] != binary_hash:
               raise RuntimeError('The release executable does not match its build provenance.')
           checksums = directory / 'SHA256SUMS.txt'
           checksums.write_text(''.join(
               f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n'
               for path in (archive, report_file, *performance)))
-          tag = f'liquid-glass-{commit[:10]}'
+          tag = f'aurora-glass-{commit[:10]}'
           notes = directory / 'release-notes.md'
           notes.write_text(
-              'Portable Windows x64 preview with the Liquid Glass interface enabled by default.\n\n'
-              'Download **LiquidGlass-Windows-x64.zip**, extract it into a new writable folder, '
-              'and run **LiquidGlass/Start Liquid Glass.cmd**. The fork uses its own profile.\n\n'
+              'Portable Windows x64 preview with the Aurora Glass interface enabled by default.\n\n'
+              'Download **AuroraGlass-Windows-x64.zip**, extract it into a new writable folder, '
+              'and run **AuroraGlass/Start Aurora Glass.cmd**. The fork uses its own profile.\n\n'
               f'Source commit: `{commit}`.\n\n'
               f'[Successful native build and startup check](https://github.com/{repo}/actions/runs/{os.environ["NATIVE_RUN"]}). '
               'Package CRC, AMD64 images, branding, isolated launcher and source/executable provenance passed verification. '
@@ -174,7 +168,7 @@ jobs:
           if existing.returncode:
               subprocess.run([
                   'gh', 'release', 'create', tag, '--repo', repo, '--verify-tag', '--draft',
-                  '--title', f'Liquid Glass Windows x64 preview ({commit[:10]})',
+                  '--title', f'Aurora Glass Windows x64 preview ({commit[:10]})',
                   '--prerelease', '--latest=false', '--notes-file', str(notes),
               ], check=True)
           else:

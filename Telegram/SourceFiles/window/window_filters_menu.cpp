@@ -138,9 +138,16 @@ void FiltersMenu::setup() {
 	_outer.paintRequest(
 	) | rpl::on_next([=](QRect clip) {
 		auto p = QPainter(&_outer);
-		p.setPen(Qt::NoPen);
-		p.setBrush(st::windowFiltersButton.textBg);
-		p.drawRect(clip);
+		p.setClipRect(clip);
+		if (Ui::Glass::Enabled()) {
+			p.fillRect(clip, st::windowBg);
+			Ui::Glass::PaintPanel(p, _outer.rect().marginsRemoved(QMargins(
+				st::glassInset, st::glassGap, st::glassInset, st::glassGap)),
+				st::windowFiltersButton.textBg->c,
+				Ui::Glass::Material::Smoked, st::glassPanelRadius);
+		} else {
+			p.fillRect(clip, st::windowFiltersButton.textBg);
+		}
 	}, _outer.lifetime());
 
 	_parent->heightValue(
@@ -610,9 +617,9 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 		if (!Ui::Glass::Enabled()) {
 			p.fillRect(raw->rect(), bg);
 		} else if (active || raw->isOver()) {
-			Ui::Glass::Surface().paint(p, raw->rect().marginsRemoved(QMargins(
+			Ui::Glass::PaintPanel(p, raw->rect().marginsRemoved(QMargins(
 				st::glassInset, st::glassInset, st::glassInset, st::glassInset)),
-				bg->c, st::glassRowRadius);
+				bg->c, Ui::Glass::Material::Smoked, st::glassRowRadius);
 		}
 	}, raw->lifetime());
 	Ui::Glass::EnabledValue() | rpl::skip(1) | rpl::on_next([=] {

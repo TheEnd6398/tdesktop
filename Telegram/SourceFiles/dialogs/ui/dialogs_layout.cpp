@@ -494,10 +494,21 @@ void PaintRow(
 	if (glass) {
 		p.fillRect(geometry, context.currentBg);
 		if (context.active || context.selected) {
-			auto hq = PainterHighQualityEnabler(p);
-			p.setPen(Qt::NoPen);
-			p.setBrush(bg);
-			p.drawRoundedRect(area, st::glassRowRadius, st::glassRowRadius);
+			Ui::Glass::PaintPanel(p, area, bg->color(),
+				Ui::Glass::Material::Soft, st::glassRowRadius);
+			if (context.active) {
+				const auto indicator = QRect(
+					style::RightToLeft()
+						? area.right() - st::glassSelectionWidth
+						: area.left(),
+					area.center().y() - st::glassSelectionHeight / 2,
+					st::glassSelectionWidth,
+					st::glassSelectionHeight);
+				Ui::Glass::PaintPanel(p, indicator,
+					st::windowActiveTextFg->c,
+					Ui::Glass::Material::Content,
+					st::glassSelectionWidth);
+			}
 		}
 	} else {
 		p.fillRect(geometry, bg);
@@ -1436,9 +1447,16 @@ void PaintCollapsedRow(
 		const QString &text,
 		int unread,
 		const PaintContext &context) {
-	p.fillRect(
-		QRect{ 0, 0, context.width, st::dialogsImportantBarHeight },
-		context.selected ? st::dialogsBgOver : context.currentBg);
+	const auto area = QRect(0, 0, context.width, st::dialogsImportantBarHeight);
+	if (Ui::Glass::Enabled()) {
+		p.fillRect(area, context.currentBg);
+		Ui::Glass::PaintPanel(p, area.marginsRemoved(QMargins(
+			st::glassGap, st::glassInset, st::glassGap, st::glassInset)),
+			(context.selected ? st::dialogsBgOver : context.currentBg)->color(),
+			Ui::Glass::Material::Soft, st::glassRowRadius);
+	} else {
+		p.fillRect(area, context.selected ? st::dialogsBgOver : context.currentBg);
+	}
 
 	row.paintRipple(p, 0, 0, context.width);
 

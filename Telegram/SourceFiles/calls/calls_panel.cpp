@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "calls/calls_panel.h"
+#include "ui/chat/glass_surface.h"
 
 #include "boxes/peers/replace_boost_box.h" // CreateUserpicsWithMoreBadge
 #include "calls/calls_panel_background.h"
@@ -1712,6 +1713,12 @@ void Panel::paint(QRect clip) {
 			_bodySt->photoTop,
 			_bodySt->photoSize,
 			region);
+	} else if (Ui::Glass::Enabled()) {
+		p.save();
+		p.setClipRegion(region);
+		Ui::Glass::PaintPanel(p, widget()->rect(), st::callBgOpaque->c,
+			Ui::Glass::Material::Smoked);
+		p.restore();
 	} else {
 		for (const auto &rect : region) {
 			p.fillRect(rect, st::callBgOpaque);

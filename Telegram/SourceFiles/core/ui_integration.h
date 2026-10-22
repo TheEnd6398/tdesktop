@@ -50,6 +50,12 @@ public:
 	QString angleBackendFilePath() override;
 
 	bool processScrollWheel(QWidget *scroll, QWheelEvent *event) override;
+	bool paintSurface(
+		QPainter &p,
+		const QRect &rect,
+		const QColor &tint,
+		int radius,
+		Ui::SurfaceRole role) override;
 	void textActionsUpdated() override;
 	void activationFromTopPanel() override;
 	void touchCounterIncrement() override;

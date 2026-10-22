@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/liquid-glass-ui
+      - feature/aurora-glass
 
 permissions:
   contents: read
@@ -48,6 +49,15 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends qt6-base-dev ninja-build
+      - name: Check Aurora palettes and toolkit patches
+        run: |
+          git submodule update --init Telegram/lib_ui
+          for patch in "$GITHUB_WORKSPACE"/fork-patches/*.patch; do
+            git -C Telegram/lib_ui apply --check "$patch"
+            git -C Telegram/lib_ui apply "$patch"
+          done
+          python3 Telegram/build/fork/prepare-aurora.py --check
+          python3 Telegram/build/fork/check-aurora.py
       - name: Build and test glass rendering in Debug
         run: |
           cmake -S Telegram/SourceFiles/tests/fork_glass -B out/glass-checks -G Ninja -DCMAKE_BUILD_TYPE=Debug
@@ -69,7 +79,7 @@ jobs:
           PYCPU
       - uses: actions/upload-artifact@v7
         with:
-          name: LiquidGlass-strip-benchmark-${{ github.sha }}
+          name: AuroraGlass-strip-benchmark-${{ github.sha }}
           path: |
             out/blur-benchmark.json
             out/benchmark-cpu.json
@@ -237,7 +247,15 @@ jobs:
         shell: pwsh
         run: |
           & TBuild/tdesktop/Telegram/build/fork/smoke-win.ps1 `
-            -BuildDirectory TBuild/tdesktop/out/Release
+            -BuildDirectory TBuild/tdesktop/out/Release `
+            -ScreenshotDirectory screenshots
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: AuroraGlass-Windows-captures-${{ github.sha }}
+          path: screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Package portable application
         shell: pwsh
         run: |
@@ -245,13 +263,13 @@ jobs:
             -BuildDirectory TBuild/tdesktop/out/Release `
             -Destination artifact
           python TBuild/tdesktop/Telegram/build/fork/verify-package.py `
-            artifact/LiquidGlass-Windows-x64.zip --commit $env:GITHUB_SHA
+            artifact/AuroraGlass-Windows-x64.zip --commit $env:GITHUB_SHA
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
-          name: LiquidGlass-Windows-x64-${{ github.sha }}
+          name: AuroraGlass-Windows-x64-${{ github.sha }}
           path: |
-            artifact/LiquidGlass-Windows-x64.zip
+            artifact/AuroraGlass-Windows-x64.zip
             artifact/verification.json
           if-no-files-found: error
           retention-days: 14

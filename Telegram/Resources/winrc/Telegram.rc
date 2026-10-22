@@ -62,14 +62,14 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Telegram FZ-LLC"
 #if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-            VALUE "FileDescription", "Liquid Glass for Telegram"
+            VALUE "FileDescription", "Aurora Glass for Telegram"
 #else
             VALUE "FileDescription", "Telegram Desktop"
 #endif
             VALUE "FileVersion", "7.3.1.0"
             VALUE "LegalCopyright", "Copyright (C) 2014-2026"
 #if defined TDESKTOP_FORK_LIQUID_GLASS && !defined OS_WIN_STORE
-            VALUE "ProductName", "Liquid Glass for Telegram"
+            VALUE "ProductName", "Aurora Glass for Telegram"
 #else
             VALUE "ProductName", "Telegram Desktop"
 #endif

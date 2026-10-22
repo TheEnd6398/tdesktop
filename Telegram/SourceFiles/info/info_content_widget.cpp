@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/info_content_widget.h"
 
 #include "ui/widgets/smooth_wheel_scroll.h"
+#include "ui/chat/glass_surface.h"
 
 #include "api/api_who_reacted.h"
 #include "boxes/peer_list_box.h"
@@ -162,7 +163,13 @@ bool ContentWidget::isStackBottom() const {
 void ContentWidget::paintEvent(QPaintEvent *e) {
 	auto p = QPainter(this);
 	if (_paintPadding.isNull()) {
-		p.fillRect(e->rect(), _bg);
+		if (Ui::Glass::Enabled()) {
+			p.setClipRect(e->rect());
+			Ui::Glass::PaintPanel(p, rect(), _bg->c,
+				Ui::Glass::Material::Soft);
+		} else {
+			p.fillRect(e->rect(), _bg);
+		}
 	} else {
 		const auto &r = e->rect();
 		const auto padding = QMargins(
