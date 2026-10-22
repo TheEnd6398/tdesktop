@@ -1237,6 +1237,9 @@ bool ApplyDefaultNightMode() {
 		|| _themeKeyLegacy) {
 		return false;
 	}
+	if (Ui::Glass::Enabled()) {
+		Core::App().settings().setSystemDarkModeEnabled(false);
+	}
 	Core::App().startSettingsAndBackground();
 	Window::Theme::ToggleNightMode();
 	Window::Theme::KeepApplied();
