@@ -26,6 +26,7 @@ Copy-Item (Join-Path $checkout 'LICENSE') $package
 Copy-Item (Join-Path $checkout 'LEGAL') $package
 Copy-Item (Join-Path $checkout 'docs/fork/AURORA_GLASS.md') (Join-Path $package 'README.md')
 Copy-Item (Join-Path $checkout 'docs/fork/IMPLEMENTATION.md') $package
+Copy-Item (Join-Path $checkout 'docs/fork/AURORA_MOTION.md') (Join-Path $package 'MOTION.md')
 @'
 @echo off
 if not exist "%~dp0profile" mkdir "%~dp0profile"

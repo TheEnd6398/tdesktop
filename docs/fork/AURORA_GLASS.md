@@ -67,11 +67,12 @@ transparent controls, backdrop capture/filtering, wheel motion and chat insets.
 The palette check covers 34 normal-text contrast pairs at a minimum 4.5:1.
 This does not certify contrast for every custom theme or arbitrary wallpaper.
 
-Hover feedback reuses Telegram's animation infrastructure and checks reduced
-motion and power-saving preferences. Blur uses the existing independent power
-saving flag. The new lighting remains static and adds no repeated full-window
-backdrop capture. End-to-end performance still needs measurement in a populated
-account.
+The [Aurora Motion Engine](AURORA_MOTION.md) extends Telegram's existing animation
+infrastructure with shared profiles, interruptible spring feedback, animated
+interaction lighting and refresh-aware scheduling. It supports reduced motion
+and existing power-saving preferences. Blur retains its independent flag; the
+motion effects add no repeated full-window backdrop capture. End-to-end performance
+still needs measurement in a populated account.
 
 ## Reproduce checks and resources
 
