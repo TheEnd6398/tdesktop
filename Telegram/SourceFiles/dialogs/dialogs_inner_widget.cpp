@@ -1885,7 +1885,7 @@ void InnerWidget::paintPeerSearchResult(
 		if (context.active || context.selected) {
 			Ui::Glass::PaintPanel(p, fullRect.marginsRemoved(QMargins(
 				st::glassGap, st::glassInset, st::glassGap, st::glassInset)),
-				bg->color(), Ui::Glass::Material::Soft, st::glassRowRadius);
+				bg.color(), Ui::Glass::Material::Soft, st::glassRowRadius);
 		}
 	} else {
 		p.fillRect(fullRect, bg);
